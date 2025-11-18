@@ -8,38 +8,52 @@
     #map {
       height: 80vh;
       width: 100%;
+      position: relative;
     }
 
     /* Controls container */
     #controls {
       margin: 10px;
-      text-align: center;   /* center the search bar + button */
+      text-align: center;
     }
 
     /* Search bar (address input) */
     #address {
-      font-size: 18px;      /* larger text */
-      padding: 12px;        /* more space inside */
-      width: 400px;         /* wider box */
+      font-size: 18px;
+      padding: 12px;
+      width: 400px;
     }
 
     /* Find Zone button */
     #controls button {
-      font-size: 18px;      /* larger text */
-      padding: 12px 24px;   /* taller and wider button */
-      margin-left: 10px;    /* space between input and button */
-      cursor: pointer;      /* pointer on hover */
+      font-size: 18px;
+      padding: 12px 24px;
+      margin-left: 10px;
+      cursor: pointer;
     }
 
     /* Result text */
     #result {
-      font-size: 20px;      /* bigger text */
-      font-weight: bold;    /* bold text */
-      margin-top: 10px;     /* space above the message */
-      color: #333;          /* dark grey for readability */
-      white-space: nowrap;  /* keep text on one line */
-      overflow: hidden;     /* hide overflow if too long */
-      text-align: center;   /* center the repeated text */
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 10px;
+      color: #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    /* Zone overlay text */
+    #zoneOverlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 80px;
+      font-weight: bold;
+      color: rgba(255, 0, 0, 0.7);
+      pointer-events: none; /* don’t block map interaction */
+      display: none;        /* hidden by default */
     }
   </style>
 
@@ -50,32 +64,35 @@
 </head>
 <body>
   <div id="controls">
-    <!-- Form approach: pressing Enter triggers lookupZone -->
     <form onsubmit="lookupZone(); return false;">
       <input id="address" type="text" placeholder="Enter NZ address">
       <button type="submit">Find Zone</button>
     </form>
     <p id="result"></p>
   </div>
-  <div id="map"></div>
+  <div id="map">
+    <div id="zoneOverlay"></div>
+  </div>
 
   <script>
     let map, zones = [];
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: -41.2, lng: 174.8 }, // center on NZ
+        center: { lat: -41.2, lng: 174.8 },
         zoom: 6,
         restriction: {
           latLngBounds: {
-            north: -33.0,   // top of NZ
-            south: -47.5,   // bottom of NZ
-            west: 166.0,    // far west
-            east: 179.0     // far east
+            north: -33.0,
+            south: -47.5,
+            west: 166.0,
+            east: 179.0
           },
           strictBounds: true
         }
       });
+
+      const overlay = document.getElementById("zoneOverlay");
 
       // Load zones from GeoJSON file
       fetch("zones.geojson")
@@ -95,21 +112,22 @@
 
             zones.push({ polygon, name: feature.properties.name });
 
-            // Highlight zone on hover
+            // Highlight + show zone number on hover
             google.maps.event.addListener(polygon, "mouseover", () => {
               polygon.setOptions({
-                fillOpacity: 0.65,   // brighter fill
-                strokeWeight: 4      // thicker outline
+                fillOpacity: 0.65,
+                strokeWeight: 4
               });
-              map.setOptions({ draggableCursor: "pointer" });
+              overlay.textContent = feature.properties.name.replace(/[^0-9]/g, "") || feature.properties.name;
+              overlay.style.display = "block";
             });
 
             google.maps.event.addListener(polygon, "mouseout", () => {
               polygon.setOptions({
-                fillOpacity: 0.35,   // back to normal
+                fillOpacity: 0.35,
                 strokeWeight: 2
               });
-              map.setOptions({ draggableCursor: null });
+              overlay.style.display = "none";
             });
           });
         });
@@ -134,7 +152,6 @@
             }
           });
 
-          // Repeat the result text across the width
           document.getElementById("result").textContent =
             inside ? `This address is inside ${inside} `.repeat(20)
                    : "This address is outside all zones ".repeat(20);
