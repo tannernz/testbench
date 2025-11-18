@@ -4,9 +4,31 @@
   <meta charset="utf-8">
   <title>NZ Zone Lookup</title>
   <style>
-    #map { height: 80vh; width: 100%; }
-    #controls { margin: 10px; }
-  </style>
+  #map {
+    height: 80vh;
+    width: 100%;
+  }
+
+  #controls {
+    margin: 10px;
+  }
+
+  /* Make the search bar bigger */
+  #address {
+    font-size: 18px;      /* larger text */
+    padding: 12px;        /* more space inside */
+    width: 400px;         /* wider box */
+  }
+
+  /* Make the button bigger */
+  #controls button {
+    font-size: 18px;      /* larger text */
+    padding: 12px 24px;   /* taller and wider button */
+    margin-left: 10px;    /* space between input and button */
+    cursor: pointer;      /* pointer on hover */
+  }
+</style>
+
   <!-- Load Google Maps JS API (replace YOUR_API_KEY with your real key) -->
   <script async
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCLJtsETdc-9JYoDpN9pua3Thz1rBjGmBc&libraries=geometry">
