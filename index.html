@@ -69,12 +69,12 @@
         zoom: 10,
         restriction: {
           latLngBounds: {
-            north: -33.0,
-            south: -47.5,
-            west: 166.0,
-            east: 179.0
+            north: -20.0,   // expanded north
+            south: -60.0,   // expanded south
+            west: 150.0,    // expanded west
+            east: 190.0     // expanded east
           }
-          // strictBounds removed so dragging works freely
+          // no strictBounds, so dragging is free inside expanded box
         }
       });
 
