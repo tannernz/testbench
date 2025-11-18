@@ -3,29 +3,39 @@
 <head>
   <meta charset="utf-8">
   <title>NZ Zone Lookup</title>
-  <style>
+<style>
+  /* Map container */
   #map {
     height: 80vh;
     width: 100%;
   }
 
+  /* Controls container */
   #controls {
     margin: 10px;
   }
 
-  /* Make the search bar bigger */
+  /* Search bar (address input) */
   #address {
     font-size: 18px;      /* larger text */
     padding: 12px;        /* more space inside */
     width: 400px;         /* wider box */
   }
 
-  /* Make the button bigger */
+  /* Find Zone button */
   #controls button {
     font-size: 18px;      /* larger text */
     padding: 12px 24px;   /* taller and wider button */
     margin-left: 10px;    /* space between input and button */
     cursor: pointer;      /* pointer on hover */
+  }
+
+  /* Result text */
+  #result {
+    font-size: 20px;      /* bigger text */
+    font-weight: bold;    /* bold text */
+    margin-top: 10px;     /* space above the message */
+    color: #333;          /* dark grey for readability */
   }
 </style>
 
