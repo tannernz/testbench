@@ -41,6 +41,36 @@
       overflow: hidden;
       text-align: center;
     }
+
+    /* Scrolling footer text */
+    .scroll-text {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255,255,255,0.9);
+      padding: 6px 0;
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      z-index: 9999;
+    }
+    .scroll-text span {
+      display: inline-block;
+      position: relative;
+      animation: moveRight 12s linear infinite;
+    }
+    @keyframes moveRight {
+      0%   { left: -100%; }
+      100% { left: 100%; }
+    }
+    .yellow { color: yellow; }
+    .green  { color: green; }
+    .blue   { color: blue; }
+    .purple { color: purple; }
+    .red    { color: red; }
   </style>
 
   <!-- Load Google Maps JS API with callback -->
@@ -60,6 +90,26 @@
 
   <div id="map"></div>
 
+  <!-- Fixed footer scrolling text -->
+  <div class="scroll-text">
+    <span>
+      <span class="yellow">m</span>
+      <span class="green">a</span>
+      <span class="blue">d</span>
+      <span class="purple">e</span>
+      <span class="red"> </span>
+      <span class="yellow">b</span>
+      <span class="green">y</span>
+      <span class="blue"> </span>
+      <span class="purple">t</span>
+      <span class="red">a</span>
+      <span class="yellow">n</span>
+      <span class="green">n</span>
+      <span class="blue">e</span>
+      <span class="purple">r</span>
+    </span>
+  </div>
+
   <script>
     let map, zones = [];
 
@@ -69,12 +119,11 @@
         zoom: 10,
         restriction: {
           latLngBounds: {
-            north: -20.0,   // expanded north
-            south: -60.0,   // expanded south
-            west: 150.0,    // expanded west
-            east: 190.0     // expanded east
+            north: -20.0,
+            south: -60.0,
+            west: 150.0,
+            east: 190.0
           }
-          // no strictBounds, so dragging is free inside expanded box
         }
       });
 
