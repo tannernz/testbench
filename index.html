@@ -8,7 +8,6 @@
     #map {
       height: 80vh;
       width: 100%;
-      position: relative;
     }
 
     /* Controls container */
@@ -42,20 +41,6 @@
       overflow: hidden;
       text-align: center;
     }
-
-    /* Zone overlay text (big number/name) */
-    #zoneOverlay {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 80px;
-      font-weight: bold;
-      color: rgba(255, 0, 0, 0.75);
-      pointer-events: none;
-      display: none;
-      text-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    }
   </style>
 
   <!-- Load Google Maps JS API with callback -->
@@ -73,9 +58,7 @@
     <p id="result"></p>
   </div>
 
-  <div id="map">
-    <div id="zoneOverlay"></div>
-  </div>
+  <div id="map"></div>
 
   <script>
     let map, zones = [];
@@ -94,8 +77,6 @@
           // strictBounds removed so dragging works freely
         }
       });
-
-      const overlay = document.getElementById("zoneOverlay");
 
       // Load zones from GeoJSON file
       fetch("zones.geojson", { cache: "no-cache" })
@@ -116,27 +97,6 @@
             });
 
             zones.push({ polygon, name });
-
-            // Highlight zone on hover and show big overlay text
-            google.maps.event.addListener(polygon, "mouseover", () => {
-              polygon.setOptions({
-                fillOpacity: 0.65,
-                strokeWeight: 4
-              });
-              const num = (name.match(/\b(\d+)\b/) || [])[1];
-              overlay.textContent = num ? num : name;
-              overlay.style.display = "block";
-              map.setOptions({ draggableCursor: "pointer" });
-            });
-
-            google.maps.event.addListener(polygon, "mouseout", () => {
-              polygon.setOptions({
-                fillOpacity: 0.35,
-                strokeWeight: 2
-              });
-              overlay.style.display = "none";
-              map.setOptions({ draggableCursor: null });
-            });
           });
         })
         .catch(err => {
