@@ -59,12 +59,12 @@
     }
     .scroll-text span {
       display: inline-block;
-      position: relative;
-      animation: moveRight 12s linear infinite;
+      position: absolute;
+      animation: moveRight 20s linear infinite; /* slowed down */
     }
     @keyframes moveRight {
-      0%   { left: -100%; }
-      100% { left: 100%; }
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
     }
     .yellow { color: yellow; }
     .green  { color: green; }
