@@ -48,7 +48,7 @@
       bottom: 0;
       left: 0;
       right: 0;
-      background: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.95);
       padding: 6px 0;
       text-align: center;
       font-size: 28px;
@@ -57,16 +57,18 @@
       overflow: hidden;
       z-index: 9999;
     }
-    .scroll-text span {
+    .scroll-track {
       display: inline-block;
-      position: absolute;
-      animation: moveRight 30s linear infinite; /* slowed down further */
+      white-space: nowrap;
+      will-change: transform;
+      animation: moveRight 30s linear infinite;
+      padding-right: 100%; /* ensures it fully exits before looping */
     }
     @keyframes moveRight {
       0%   { transform: translateX(-100%); }
       100% { transform: translateX(100%); }
     }
-    .yellow { color: #CCCC00; } /* darker yellow */
+    .yellow { color: #CCCC00; } /* darker, more legible yellow */
     .green  { color: green; }
     .blue   { color: blue; }
     .purple { color: purple; }
@@ -92,7 +94,7 @@
 
   <!-- Fixed footer scrolling text -->
   <div class="scroll-text">
-    <span>
+    <div class="scroll-track">
       <span class="yellow">m</span>
       <span class="green">a</span>
       <span class="blue">d</span>
@@ -107,7 +109,7 @@
       <span class="green">n</span>
       <span class="blue">e</span>
       <span class="purple">r</span>
-    </span>
+    </div>
   </div>
 
   <script>
