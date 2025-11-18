@@ -43,7 +43,7 @@
       text-align: center;
     }
 
-    /* Zone overlay text */
+    /* Zone overlay text (big number/name) */
     #zoneOverlay {
       position: absolute;
       top: 50%;
@@ -51,15 +51,17 @@
       transform: translate(-50%, -50%);
       font-size: 80px;
       font-weight: bold;
-      color: rgba(255, 0, 0, 0.7);
-      pointer-events: none; /* don’t block map interaction */
-      display: none;        /* hidden by default */
+      color: rgba(255, 0, 0, 0.75);
+      pointer-events: none;
+      display: none;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
   </style>
 
-  <!-- Load Google Maps JS API with your actual key -->
-  <script async
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCLJtsETdc-9JYoDpN9pua3Thz1rBjGmBc&libraries=geometry">
+  <!-- Load Google Maps JS API with callback (no racing) -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCLJtsETdc-9JYoDpN9pua3Thz1rBjGmBc&libraries=geometry&callback=initMap"
+    defer>
   </script>
 </head>
 <body>
@@ -70,6 +72,7 @@
     </form>
     <p id="result"></p>
   </div>
+
   <div id="map">
     <div id="zoneOverlay"></div>
   </div>
@@ -79,8 +82,8 @@
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: -41.2, lng: 174.8 },
-        zoom: 6,
+        center: { lat: -36.85, lng: 174.76 }, // Auckland focus
+        zoom: 10,
         restriction: {
           latLngBounds: {
             north: -33.0,
@@ -94,12 +97,23 @@
 
       const overlay = document.getElementById("zoneOverlay");
 
-      // Load zones from GeoJSON file
-      fetch("zones.geojson")
-        .then(response => response.json())
+      // Load zones from GeoJSON file with error handling
+      fetch("zones.geojson", { cache: "no-cache" })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("Failed to load zones.geojson: " + response.status);
+          }
+          return response.json();
+        })
         .then(data => {
+          if (!data || !data.features || !Array.isArray(data.features)) {
+            throw new Error("Invalid GeoJSON structure");
+          }
+
           data.features.forEach(feature => {
+            const name = feature.properties && feature.properties.name ? feature.properties.name : "Zone";
             const coords = feature.geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+
             const polygon = new google.maps.Polygon({
               paths: coords,
               strokeColor: "#FF0000",
@@ -110,16 +124,19 @@
               map: map
             });
 
-            zones.push({ polygon, name: feature.properties.name });
+            zones.push({ polygon, name });
 
-            // Highlight + show zone number on hover
+            // Highlight zone on hover and show big overlay text
             google.maps.event.addListener(polygon, "mouseover", () => {
               polygon.setOptions({
                 fillOpacity: 0.65,
                 strokeWeight: 4
               });
-              overlay.textContent = feature.properties.name.replace(/[^0-9]/g, "") || feature.properties.name;
+              // Show just the zone number if present, otherwise full name
+              const num = (name.match(/\b(\d+)\b/) || [])[1];
+              overlay.textContent = num ? num : name;
               overlay.style.display = "block";
+              map.setOptions({ draggableCursor: "pointer" });
             });
 
             google.maps.event.addListener(polygon, "mouseout", () => {
@@ -128,8 +145,18 @@
                 strokeWeight: 2
               });
               overlay.style.display = "none";
+              map.setOptions({ draggableCursor: null });
             });
           });
+
+          if (zones.length === 0) {
+            console.warn("No zones found in GeoJSON.");
+            document.getElementById("result").textContent = "No zones loaded.";
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById("result").textContent = "Error loading zones: " + err.message;
         });
     }
 
@@ -160,8 +187,6 @@
         }
       });
     }
-
-    window.onload = initMap;
   </script>
 </body>
 </html>
