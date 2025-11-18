@@ -77,9 +77,6 @@
         }
       });
 
-      // InfoWindow for hover
-      const infoWindow = new google.maps.InfoWindow();
-
       // Load zones from GeoJSON file
       fetch("zones.geojson")
         .then(response => response.json())
@@ -98,15 +95,21 @@
 
             zones.push({ polygon, name: feature.properties.name });
 
-            // Hover events
-            google.maps.event.addListener(polygon, "mouseover", (event) => {
-              infoWindow.setContent(feature.properties.name);
-              infoWindow.setPosition(event.latLng);
-              infoWindow.open(map);
+            // Highlight zone on hover
+            google.maps.event.addListener(polygon, "mouseover", () => {
+              polygon.setOptions({
+                fillOpacity: 0.65,   // brighter fill
+                strokeWeight: 4      // thicker outline
+              });
+              map.setOptions({ draggableCursor: "pointer" });
             });
 
             google.maps.event.addListener(polygon, "mouseout", () => {
-              infoWindow.close();
+              polygon.setOptions({
+                fillOpacity: 0.35,   // back to normal
+                strokeWeight: 2
+              });
+              map.setOptions({ draggableCursor: null });
             });
           });
         });
