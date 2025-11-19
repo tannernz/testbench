@@ -72,7 +72,7 @@
       display: inline-block;
       white-space: nowrap;
       will-change: transform;
-      animation: moveLeft 40s linear infinite;
+      animation: moveLeft 60s linear infinite;
       padding-left: 100%;
     }
     @keyframes moveLeft {
@@ -159,7 +159,7 @@
     let startLocation = null;
     let startZone = null;
     let currentMarker = null;
-    let destLocation = null; // Store destination location
+    let destLocation = null;
 
     // Branch coordinates
     const branchLocations = [
@@ -185,7 +185,7 @@
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: -40.9, lng: 174.9 }, // NZ center
+        center: { lat: -40.9, lng: 174.9 },
         zoom: 5
       });
 
@@ -210,7 +210,6 @@
         map.setCenter(startLocation);
         map.setZoom(12);
         checkZone(startLocation, true);
-        // Only check local warning if we have both locations
         if (destLocation) {
           checkLocalWarning();
         } else {
@@ -245,7 +244,7 @@
               strokeOpacity: 0.6,
               strokeWeight: 2,
               fillColor: "#FF6666",
-              fillOpacity: 0.05,
+              fillOpacity: 0.2,
               map: map
             });
             polygons.push({ polygon, name });
@@ -280,7 +279,7 @@
         fillOpacity: 0.9,
         strokeColor: "#333333",
         strokeWeight: 1,
-        scale: 15 // Size of the white circle background
+        scale: 15
       };
 
       consultantLocations.forEach(c => {
@@ -328,8 +327,8 @@
         }
       });
       
-      // If the closest branch is more than 50km straight-line, it's definitely not within 35km by road
-      if (minStraightLineDistance > 50000) {
+      // If the closest branch is more than 40km straight-line, it's definitely not within 35km by road
+      if (minStraightLineDistance > 40000) {
         callback(false);
         return;
       }
@@ -345,13 +344,14 @@
         directionsService.route(request, (result, status) => {
           if (status === "OK") {
             const leg = result.routes[0].legs[0];
-            const roadDistance = leg.distance.value; // distance in meters
+            const roadDistance = leg.distance.value;
             
             // If within 35km (35,000 meters) by road, return true
             callback(roadDistance <= 35000);
           } else {
             console.error("Directions request failed for local check:", status);
-            callback(false);
+            // If the API fails, use straight-line distance as fallback
+            callback(minStraightLineDistance <= 35000);
           }
         });
       } else {
@@ -410,7 +410,6 @@
         map.setCenter(startLocation);
         map.setZoom(12);
         checkZone(startLocation, true);
-        // Only check local warning if we have both locations
         if (destLocation) {
           checkLocalWarning();
         } else {
@@ -426,7 +425,6 @@
               map.setCenter(startLocation);
               map.setZoom(12);
               checkZone(startLocation, true);
-              // Only check local warning if we have both locations
               if (destLocation) {
                 checkLocalWarning();
               } else {
