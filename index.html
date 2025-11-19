@@ -4,46 +4,41 @@
   <meta charset="utf-8">
   <title>NZ Zone Lookup + Directions</title>
   <style>
-    /* Map container */
     #map {
       height: 80vh;
       width: 100%;
     }
-
-    /* Controls container */
     #controls {
       margin: 10px;
       text-align: center;
     }
-
-    /* Input fields */
     #address, #from, #to {
       font-size: 18px;
       padding: 12px;
       width: 300px;
       margin: 5px;
     }
-
-    /* Buttons */
     #controls button {
       font-size: 18px;
       padding: 12px 24px;
       margin: 5px;
       cursor: pointer;
     }
-
-    /* Result text */
     #result {
-      font-size: 20px;
+      font-size: 32px;
       font-weight: bold;
       margin-top: 10px;
       color: #333;
+      text-align: center;
       white-space: nowrap;
       overflow: hidden;
-      text-align: center;
+    }
+    #result span {
+      display: inline-block;
+      margin: 0 20px;
     }
 
-    /* Scrolling footer text with truck */
+    /* Scrolling footer text */
     .scroll-text {
       position: fixed;
       bottom: 0;
@@ -69,16 +64,28 @@
       0%   { transform: translateX(100%); }
       100% { transform: translateX(-100%); }
     }
-    .truck { font-size: 32px; margin-right: 12px; }
-    .green  { color: green; }
-    .blue   { color: blue; }
-    .purple { color: purple; }
-    .red    { color: red; }
+
+    /* Animated color cycling */
+    @keyframes colorCycle {
+      0%   { color: red; }
+      25%  { color: orange; }
+      50%  { color: lime; }
+      75%  { color: cyan; }
+      100% { color: red; }
+    }
+    .scroll-track span {
+      animation: colorCycle 4s linear infinite;
+    }
+
+    .truck svg {
+      height: 40px;
+      margin-right: 12px;
+    }
   </style>
 
-  <!-- Load Google Maps JS API -->
+  <!-- Google Maps JS API with Places + Geometry -->
   <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCLJtsETdc-9JYoDpN9pua3Thz1rBjGmBc&libraries=geometry&callback=initMap"
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCLJtsETdc-9JYoDpN9pua3Thz1rBjGmBc&libraries=geometry,places&callback=initMap"
     defer>
   </script>
 </head>
@@ -102,57 +109,80 @@
 
   <div id="map"></div>
 
-  <!-- Fixed footer scrolling text -->
+  <!-- Scrolling footer with red truck SVG facing left -->
   <div class="scroll-text">
     <div class="scroll-track">
-      <span class="truck">🚚</span>
-      <span class="green">m</span>
-      <span class="blue">a</span>
-      <span class="purple">d</span>
-      <span class="red">e</span>
-      <span class="green"> </span>
-      <span class="blue">b</span>
-      <span class="purple">y</span>
-      <span class="red"> </span>
-      <span class="green">t</span>
-      <span class="blue">a</span>
-      <span class="purple">n</span>
-      <span class="red">n</span>
-      <span class="green">e</span>
-      <span class="blue">r</span>
+      <span class="truck">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="160" height="60" role="img" aria-label="Red semi-truck with long trailer" style="transform: scaleX(-1);">
+          <!-- Trailer -->
+          <rect x="10" y="40" width="200" height="50" rx="6" ry="6" fill="#e10600"/>
+          <!-- Hitch -->
+          <rect x="210" y="65" width="6" height="4" fill="#e10600"/>
+          <!-- Cab body -->
+          <rect x="222" y="50" width="28" height="35" rx="4" ry="4" fill="#e10600"/>
+          <!-- Cab hood -->
+          <polygon points="250,50 270,60 270,85 250,85" fill="#e10600"/>
+          <!-- Window -->
+          <rect x="226" y="55" width="22" height="15" rx="2" ry="2" fill="#ffffff" opacity="0.85"/>
+          <!-- Trailer wheels -->
+          <circle cx="50" cy="95" r="12" fill="#111"/>
+          <circle cx="100" cy="95" r="12" fill="#111"/>
+          <circle cx="150" cy="95" r="12" fill="#111"/>
+          <circle cx="200" cy="95" r="12" fill="#111"/>
+          <!-- Cab wheels -->
+          <circle cx="235" cy="95" r="12" fill="#111"/>
+          <circle cx="260" cy="95" r="12" fill="#111"/>
+        </svg>
+      </span>
+      <span>m</span><span>a</span><span>d</span><span>e</span>
+      <span> </span><span>b</span><span>y</span><span> </span>
+      <span>t</span><span>a</span><span>n</span><span>n</span><span>e</span><span>r</span>
     </div>
   </div>
 
   <script>
-    let map, zones = [];
+    let map;
+    let polygons = [];
+    let autocomplete;
     let directionsService, directionsRenderer;
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: -36.85, lng: 174.76 }, // Auckland focus
-        zoom: 7,
-        restriction: {
-          latLngBounds: {
-            north: -20.0,
-            south: -60.0,
-            west: 150.0,
-            east: 190.0
-          }
-        }
+        center: { lat: -36.85, lng: 174.76 }, // Auckland default
+        zoom: 5
       });
 
-      // Directions service + renderer
       directionsService = new google.maps.DirectionsService();
       directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
 
-      // Load zones from GeoJSON file
+      const input = document.getElementById("address");
+      autocomplete = new google.maps.places.Autocomplete(input, {
+        componentRestrictions: { country: "nz" }
+      });
+
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        if (!place.geometry) return;
+        const location = place.geometry.location;
+        new google.maps.Marker({ position: location, map: map });
+        map.setCenter(location);
+        map.setZoom(12);
+        checkZone(location);
+      });
+
+      input.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          lookupZone();
+        }
+      });
+
       fetch("zones.geojson", { cache: "no-cache" })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
           data.features.forEach(feature => {
-            const name = feature.properties && feature.properties.name ? feature.properties.name : "Zone";
-            const coords = feature.geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
-
+            const coords = getCoords(feature.geometry);
+            const name = feature.properties.name || "Unnamed";
             const polygon = new google.maps.Polygon({
               paths: coords,
               strokeColor: "#FF0000",
@@ -162,66 +192,58 @@
               fillOpacity: 0.35,
               map: map
             });
-
-            zones.push({ polygon, name });
+            polygons.push({ polygon, name });
           });
         })
-        .catch(err => {
-          console.error(err);
-          document.getElementById("result").textContent = "Error loading zones: " + err.message;
-        });
+        .catch(err => console.error("Error loading GeoJSON:", err));
+    }
+
+    function getCoords(geometry) {
+      if (geometry.type === "Polygon") {
+        return geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+      } else if (geometry.type === "MultiPolygon") {
+        return geometry.coordinates.flat(2).map(c => ({ lat: c[1], lng: c[0] }));
+      }
+      return [];
     }
 
     function lookupZone() {
+      const place = autocomplete.getPlace();
       const geocoder = new google.maps.Geocoder();
-      const address = document.getElementById("address").value;
 
-      geocoder.geocode({ address: address }, (results, status) => {
-        if (status === "OK") {
-          const location = results[0].geometry.location;
-
-          new google.maps.Marker({ position: location, map: map });
-          map.setCenter(location);
-          map.setZoom(14);
-
-          let inside = null;
-          zones.forEach(zone => {
-            if (google.maps.geometry.poly.containsLocation(location, zone.polygon)) {
-              inside = zone.name;
-            }
-          });
-
-          document.getElementById("result").textContent =
-            inside ? `This address is inside ${inside} `.repeat(20)
-                   : "This address is outside all zones ".repeat(20);
-        } else {
-          document.getElementById("result").textContent = "Geocode failed: " + status;
-        }
-      });
+      if (place && place.geometry) {
+        const location = place.geometry.location;
+        new google.maps.Marker({ position: location, map: map });
+        map.setCenter(location);
+        map.setZoom(12);
+        checkZone(location);
+      } else {
+        const address = document.getElementById("address").value;
+        geocoder.geocode({
+          address,
+          componentRestrictions: { country: "NZ" }
+        }, (results, status) => {
+          if (status === "OK" && results[0]) {
+            const location = results[0].geometry.location;
+            new google.maps.Marker({ position: location, map: map });
+            map.setCenter(location);
+            map.setZoom(12);
+            checkZone(location);
+          } else {
+            document.getElementById("result").textContent =
+              "Geocode failed: " + status;
+          }
+        });
+      }
     }
 
-    function calcRoute() {
-      const from = document.getElementById("from").value;
-      const to = document.getElementById("to").value;
-
-      const request = {
-        origin: from,
-        destination: to,
-        travelMode: google.maps.TravelMode.DRIVING
-      };
-
-      directionsService.route(request, (result, status) => {
-        if (status === "OK") {
-          directionsRenderer.setDirections(result);
-
-          const leg = result.routes[0].legs[0];
-          document.getElementById("result").textContent =
-            `Distance: ${leg.distance.text}, Duration: ${leg.duration.text}`;
-        } else {
-          document.getElementById("result").textContent = "Route request failed: " + status;
+    function checkZone(location) {
+      let found = null;
+      polygons.forEach(p => {
+        if (google.maps.geometry.poly.containsLocation(location, p.polygon)) {
+          found = p.name;
         }
       });
-    }
-  </script>
-</body>
-</html>
+
+      if (found) {
+        const
