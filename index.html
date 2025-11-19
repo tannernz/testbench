@@ -12,7 +12,7 @@
       margin: 10px;
       text-align: center;
     }
-    #address, #from, #to {
+    #address, #to {
       font-size: 18px;
       padding: 12px;
       width: 300px;
@@ -65,7 +65,7 @@
       100% { transform: translateX(-100%); }
     }
 
-    /* Animated color cycling */
+    /* Animated color cycling (no yellow) */
     @keyframes colorCycle {
       0%   { color: red; }
       25%  { color: orange; }
@@ -91,16 +91,15 @@
 </head>
 <body>
   <div id="controls">
-    <!-- Zone lookup -->
+    <!-- Zone lookup (origin) -->
     <form onsubmit="lookupZone(); return false;">
       <input id="address" type="text" placeholder="Enter NZ address">
       <button type="submit">Find Zone</button>
     </form>
 
-    <!-- Directions form -->
+    <!-- Destination for route (uses last looked-up origin) -->
     <form onsubmit="calcRoute(); return false;">
-      <input id="from" type="text" placeholder="From address">
-      <input id="to" type="text" placeholder="To address">
+      <input id="to" type="text" placeholder="Enter destination address">
       <button type="submit">Get Route</button>
     </form>
 
@@ -145,6 +144,7 @@
     let polygons = [];
     let autocomplete;
     let directionsService, directionsRenderer;
+    let startLocation = null; // origin from zone lookup
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
@@ -163,11 +163,11 @@
       autocomplete.addListener("place_changed", () => {
         const place = autocomplete.getPlace();
         if (!place.geometry) return;
-        const location = place.geometry.location;
-        new google.maps.Marker({ position: location, map: map });
-        map.setCenter(location);
+        startLocation = place.geometry.location; // save origin
+        new google.maps.Marker({ position: startLocation, map: map });
+        map.setCenter(startLocation);
         map.setZoom(12);
-        checkZone(location);
+        checkZone(startLocation);
       });
 
       input.addEventListener("keydown", function(e) {
@@ -212,11 +212,11 @@
       const geocoder = new google.maps.Geocoder();
 
       if (place && place.geometry) {
-        const location = place.geometry.location;
-        new google.maps.Marker({ position: location, map: map });
-        map.setCenter(location);
+        startLocation = place.geometry.location; // save origin
+        new google.maps.Marker({ position: startLocation, map: map });
+        map.setCenter(startLocation);
         map.setZoom(12);
-        checkZone(location);
+        checkZone(startLocation);
       } else {
         const address = document.getElementById("address").value;
         geocoder.geocode({
@@ -224,11 +224,11 @@
           componentRestrictions: { country: "NZ" }
         }, (results, status) => {
           if (status === "OK" && results[0]) {
-            const location = results[0].geometry.location;
-            new google.maps.Marker({ position: location, map: map });
-            map.setCenter(location);
+            startLocation = results[0].geometry.location; // save origin
+            new google.maps.Marker({ position: startLocation, map: map });
+            map.setCenter(startLocation);
             map.setZoom(12);
-            checkZone(location);
+            checkZone(startLocation);
           } else {
             document.getElementById("result").textContent =
               "Geocode failed: " + status;
@@ -258,11 +258,15 @@
     }
 
     function calcRoute() {
-      const from = document.getElementById("from").value;
-      const to = document.getElementById("to").value;
+      if (!startLocation) {
+        document.getElementById("result").textContent =
+          "Please look up a starting address first.";
+        return;
+      }
 
+      const to = document.getElementById("to").value;
       const request = {
-        origin: from,
+        origin: startLocation,
         destination: to,
         travelMode: google.maps.TravelMode.DRIVING
       };
@@ -282,4 +286,3 @@
   </script>
 </body>
 </html>
-
