@@ -137,16 +137,26 @@
     let startZone = null;
     let currentMarker = null; // single, replaceable marker
 
-    // Branch coordinates (pre-geocoded)
+    // Branch coordinates
     const branchLocations = [
       {lat: -36.7512, lng: 174.7062, title: "200 Bush Road, Albany"},
-      {lat: -37.7375, lng: 175.2207, title: "62/68 The Boulevard, Te Rapa Park, Hamilton"},
+      {lat: -37.7375, lng: 175.2207, title: "62/68 The Boulevard, Hamilton"},
       {lat: -37.6645, lng: 176.2069, title: "141 Newton Street, Mt Maunganui"},
-      {lat: -40.3410, lng: 175.5956, title: "17 Bennett Street, Cloverlea, Palmerston North"},
+      {lat: -40.3410, lng: 175.5956, title: "17 Bennett Street, Palmerston North"},
       {lat: -41.2494, lng: 174.9099, title: "65 Seaview Road, Lower Hutt"},
       {lat: -41.3020, lng: 173.2230, title: "4 Tokomaru Place, Nelson"},
       {lat: -43.5333, lng: 172.5500, title: "15 Foremans Road, Christchurch"},
       {lat: -45.8742, lng: 170.5036, title: "32 McNab Street, Dunedin"}
+    ];
+
+    // Consultant coordinates
+    const consultantLocations = [
+      {lat: -36.7193, lng: 174.7367, title: "Consultant - Browns Bay"},
+      {lat: -36.6850, lng: 174.7410, title: "Consultant - Long Bay"},
+      {lat: -37.6500, lng: 175.5167, title: "Consultant - Morrinsville"},
+      {lat: -37.6973, lng: 176.2846, title: "Consultant - Papamoa Beach"},
+      {lat: -40.9167, lng: 175.0167, title: "Consultant - Paraparaumu"},
+      {lat: -43.5833, lng: 172.3833, title: "Consultant - Rolleston"}
     ];
 
     function initMap() {
@@ -215,10 +225,10 @@
 
       // Mark branches with a building icon (SVG path)
       const buildingIcon = {
-        path: "M2,22 L2,10 L10,6 L18,10 L18,22 L2,22 Z M5,22 L5,14 L8,14 L8,22 Z M12,22 L12,14 L15,14 L15,22 Z M2,10 L10,6 L18,10", // simple building+roof
-        fillColor: "#1e6bd6",
+        path: "M2,22 L2,10 L10,6 L18,10 L18,22 L2,22 Z M5,22 L5,14 L8,14 L8,22 Z M12,22 L12,14 L15,14 L15,22 Z M2,10 L10,6 L18,10",
+        fillColor: "#e10600",
         fillOpacity: 0.95,
-        strokeColor: "#0d3a84",
+        strokeColor: "#800000",
         strokeWeight: 1.5,
         scale: 1.6,
         anchor: new google.maps.Point(10, 22)
@@ -230,6 +240,16 @@
           map: map,
           icon: buildingIcon,
           title: branch.title
+        });
+      });
+
+      // Mark consultants with person emoji labels
+      consultantLocations.forEach(c => {
+        new google.maps.Marker({
+          position: { lat: c.lat, lng: c.lng },
+          map: map,
+          label: "👤",
+          title: c.title
         });
       });
     }
