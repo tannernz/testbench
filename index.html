@@ -185,10 +185,9 @@
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-      center: { lat: -40.9, lng: 174.9 },
-      zoom: 5
+        center: { lat: -40.9, lng: 174.9 }, // NZ center
+        zoom: 5
       });
-    }
 
       directionsService = new google.maps.DirectionsService();
       directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
