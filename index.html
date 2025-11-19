@@ -328,7 +328,7 @@
       });
       
       // If the closest branch is more than 40km straight-line, it's definitely not within 35km by road
-      if (minStraightLineDistance > 35000) {
+      if (minStraightLineDistance < 50000) {
         callback(false);
         return;
       }
