@@ -72,7 +72,7 @@
 
   <!-- Google Maps JS API with Places library -->
   <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCLJtsETdc-9JYoDpN9pua3Thz1rBjGmBc&libraries=geometry,places&callback=initMap"
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=geometry,places&callback=initMap"
     defer>
   </script>
 </head>
@@ -105,30 +105,27 @@
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: -36.85, lng: 174.76 }, // Auckland as default
+        center: { lat: -36.85, lng: 174.76 }, // Auckland default
         zoom: 5
       });
 
-      // NZ-only autocomplete
       const input = document.getElementById("address");
       autocomplete = new google.maps.places.Autocomplete(input, {
         componentRestrictions: { country: "nz" }
       });
 
-      // Use place_changed event to avoid double-search glitch
+      // Autocomplete selection
       autocomplete.addListener("place_changed", () => {
         const place = autocomplete.getPlace();
         if (!place.geometry) return;
-
         const location = place.geometry.location;
         new google.maps.Marker({ position: location, map: map });
         map.setCenter(location);
         map.setZoom(12);
-
         checkZone(location);
       });
 
-      // Allow pressing Enter to trigger lookupZone()
+      // Enter key triggers lookupZone
       input.addEventListener("keydown", function(e) {
         if (e.key === "Enter") {
           e.preventDefault();
@@ -143,7 +140,6 @@
           data.features.forEach(feature => {
             const coords = getCoords(feature.geometry);
             const name = feature.properties.name || "Unnamed";
-
             const polygon = new google.maps.Polygon({
               paths: coords,
               strokeColor: "#FF0000",
@@ -153,14 +149,12 @@
               fillOpacity: 0.35,
               map: map
             });
-
             polygons.push({ polygon, name });
           });
         })
         .catch(err => console.error("Error loading GeoJSON:", err));
     }
 
-    // Handle Polygon and MultiPolygon
     function getCoords(geometry) {
       if (geometry.type === "Polygon") {
         return geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
@@ -170,19 +164,38 @@
       return [];
     }
 
-    // Manual search button fallback
     function lookupZone() {
       const place = autocomplete.getPlace();
+      const geocoder = new google.maps.Geocoder();
+
       if (place && place.geometry) {
+        // Autocomplete suggestion selected
         const location = place.geometry.location;
         new google.maps.Marker({ position: location, map: map });
         map.setCenter(location);
         map.setZoom(12);
         checkZone(location);
+      } else {
+        // Fallback: geocode typed text
+        const address = document.getElementById("address").value;
+        geocoder.geocode({
+          address,
+          componentRestrictions: { country: "NZ" }
+        }, (results, status) => {
+          if (status === "OK" && results[0]) {
+            const location = results[0].geometry.location;
+            new google.maps.Marker({ position: location, map: map });
+            map.setCenter(location);
+            map.setZoom(12);
+            checkZone(location);
+          } else {
+            document.getElementById("result").textContent =
+              "Geocode failed: " + status;
+          }
+        });
       }
     }
 
-    // Zone check helper
     function checkZone(location) {
       let found = null;
       polygons.forEach(p => {
