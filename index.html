@@ -25,7 +25,7 @@
       cursor: pointer;
     }
     #result {
-      font-size: 32px;
+      font-size: 28px;
       font-weight: bold;
       margin-top: 10px;
       color: #333;
@@ -65,7 +65,7 @@
       100% { transform: translateX(-100%); }
     }
 
-    /* Animated color cycling (no yellow) */
+    /* Animated color cycling */
     @keyframes colorCycle {
       0%   { color: red; }
       25%  { color: orange; }
@@ -97,7 +97,7 @@
       <button type="submit">Find Zone</button>
     </form>
 
-    <!-- Destination for route (uses last looked-up origin) -->
+    <!-- Destination for route -->
     <form onsubmit="calcRoute(); return false;">
       <input id="to" type="text" placeholder="Enter destination address">
       <button type="submit">Get Route</button>
@@ -145,6 +145,7 @@
     let autocomplete;
     let directionsService, directionsRenderer;
     let startLocation = null; // origin from zone lookup
+    let startZone = null;     // origin zone name
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
@@ -167,7 +168,7 @@
         new google.maps.Marker({ position: startLocation, map: map });
         map.setCenter(startLocation);
         map.setZoom(12);
-        checkZone(startLocation);
+        checkZone(startLocation, true); // true: update startZone too
       });
 
       input.addEventListener("keydown", function(e) {
@@ -202,6 +203,7 @@
       if (geometry.type === "Polygon") {
         return geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
       } else if (geometry.type === "MultiPolygon") {
+        // Flatten all rings and use the outermost ring points for display
         return geometry.coordinates.flat(2).map(c => ({ lat: c[1], lng: c[0] }));
       }
       return [];
@@ -216,7 +218,7 @@
         new google.maps.Marker({ position: startLocation, map: map });
         map.setCenter(startLocation);
         map.setZoom(12);
-        checkZone(startLocation);
+        checkZone(startLocation, true); // update startZone
       } else {
         const address = document.getElementById("address").value;
         geocoder.geocode({
@@ -228,7 +230,7 @@
             new google.maps.Marker({ position: startLocation, map: map });
             map.setCenter(startLocation);
             map.setZoom(12);
-            checkZone(startLocation);
+            checkZone(startLocation, true); // update startZone
           } else {
             document.getElementById("result").textContent =
               "Geocode failed: " + status;
@@ -237,13 +239,18 @@
       }
     }
 
-    function checkZone(location) {
+    // If updateStart is true, also set startZone
+    function checkZone(location, updateStart = false) {
       let found = null;
       polygons.forEach(p => {
         if (google.maps.geometry.poly.containsLocation(location, p.polygon)) {
           found = p.name;
         }
       });
+
+      if (updateStart) {
+        startZone = found || null;
+      }
 
       if (found) {
         const repeated = Array(10)
@@ -265,23 +272,53 @@
       }
 
       const to = document.getElementById("to").value;
-      const request = {
-        origin: startLocation,
-        destination: to,
-        travelMode: google.maps.TravelMode.DRIVING
-      };
+      const geocoder = new google.maps.Geocoder();
 
-      directionsService.route(request, (result, status) => {
-        if (status === "OK") {
-          directionsRenderer.setDirections(result);
-          const leg = result.routes[0].legs[0];
-          document.getElementById("result").textContent =
-            `Distance: ${leg.distance.text}, Duration: ${leg.duration.text}`;
-        } else {
-          document.getElementById("result").textContent =
-            "Route request failed: " + status;
-        }
-      });
+      geocoder.geocode({ address: to, componentRestrictions: { country: "NZ" } },
+        (results, status) => {
+          if (status === "OK" && results[0]) {
+            const destLocation = results[0].geometry.location;
+
+            // Determine destination zone
+            let destZone = null;
+            polygons.forEach(p => {
+              if (google.maps.geometry.poly.containsLocation(destLocation, p.polygon)) {
+                destZone = p.name;
+              }
+            });
+
+            const request = {
+              origin: startLocation,
+              destination: destLocation,
+              travelMode: google.maps.TravelMode.DRIVING
+            };
+
+            directionsService.route(request, (result, status) => {
+              if (status === "OK") {
+                directionsRenderer.setDirections(result);
+                const leg = result.routes[0].legs[0];
+
+                let zoneInfo = "";
+                if (startZone && destZone) {
+                  zoneInfo = `, Route: ${startZone} → ${destZone}`;
+                } else if (startZone && !destZone) {
+                  zoneInfo = `, Route: ${startZone} → Outside zones`;
+                } else if (!startZone && destZone) {
+                  zoneInfo = `, Route: Outside zones → ${destZone}`;
+                }
+
+                document.getElementById("result").textContent =
+                  `Distance: ${leg.distance.text}, Duration: ${leg.duration.text}${zoneInfo}`;
+              } else {
+                document.getElementById("result").textContent =
+                  "Route request failed: " + status;
+              }
+            });
+          } else {
+            document.getElementById("result").textContent =
+              "Destination geocode failed: " + status;
+          }
+        });
     }
   </script>
 </body>
