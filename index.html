@@ -30,6 +30,38 @@
       color: #333;
       text-align: center;
     }
+
+    /* Scrolling footer text with truck */
+    .scroll-text {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255,255,255,0.95);
+      padding: 6px 0;
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      z-index: 9999;
+    }
+    .scroll-track {
+      display: inline-block;
+      white-space: nowrap;
+      will-change: transform;
+      animation: moveLeft 60s linear infinite;
+      padding-left: 100%;
+    }
+    @keyframes moveLeft {
+      0%   { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    .truck { font-size: 32px; margin-right: 12px; }
+    .green  { color: green; }
+    .blue   { color: blue; }
+    .purple { color: purple; }
+    .red    { color: red; }
   </style>
 
   <!-- Google Maps JS API -->
@@ -48,6 +80,17 @@
   </div>
 
   <div id="map"></div>
+
+  <!-- Fixed footer scrolling text -->
+  <div class="scroll-text">
+    <div class="scroll-track">
+      <span class="truck">🚚</span>
+      <span class="green">m</span><span class="blue">a</span><span class="purple">d</span><span class="red">e</span>
+      <span class="green"> </span><span class="blue">b</span><span class="purple">y</span><span class="red"> </span>
+      <span class="green">t</span><span class="blue">a</span><span class="purple">n</span><span class="red">n</span>
+      <span class="green">e</span><span class="blue">r</span>
+    </div>
+  </div>
 
   <script>
     let map;
@@ -96,7 +139,6 @@
       if (geometry.type === "Polygon") {
         return geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
       } else if (geometry.type === "MultiPolygon") {
-        // Flatten all rings into one array
         return geometry.coordinates.flat(2).map(c => ({ lat: c[1], lng: c[0] }));
       }
       return [];
