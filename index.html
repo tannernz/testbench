@@ -29,7 +29,7 @@
       margin-top: 10px;
       color: #333;
       text-align: center;
-      white-space: nowrap;   /* keep everything on one line */
+      white-space: nowrap;   /* single row */
       overflow: hidden;
     }
     #result span {
@@ -105,17 +105,8 @@
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: -36.85, lng: 174.76 },
-        zoom: 5,
-        restriction: {
-          latLngBounds: {
-            north: -34.0,
-            south: -47.0,
-            west: 166.0,
-            east: 180.0
-          },
-          strictBounds: false // smoother dragging
-        }
+        center: { lat: -36.85, lng: 174.76 }, // Auckland as default
+        zoom: 5
       });
 
       // NZ-only autocomplete
