@@ -330,7 +330,10 @@
     },
 {
   "type": "Feature",
-  "properties": { "name": "Dunedin Region", "type": "region" },
+  "properties": {
+    "name": "Dunedin Region",
+    "type": "region"
+  },
   "geometry": {
     "type": "Polygon",
     "coordinates": [
@@ -343,6 +346,6 @@
       ]
     ]
   }
-}
+},
   ]
 }
