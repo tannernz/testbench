@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>NZ Zone Lookup + Directions</title>
+  <style>
+    #map {
+      height: 80vh;
+      width: 100%;
+    }
+    #controls {
+      margin: 10px;
+      text-align: center;
+    }
+    #address, #to {
+      font-size: 18px;
+      padding: 12px;
+      width: 300px;
+      margin: 5px;
+    }
+    #controls button {
+      font-size: 18px;
+      padding: 12px 24px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    #result {
+      font-size: 32px;
+      font-weight: bold;
+      margin-top: 10px;
+      color: #333;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    #result span {
+      display: inline-block;
+      margin: 0 20px;
+    }
+
+    /* Scrolling footer text */
+    .scroll-text {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255,255,255,0.95);
+      padding: 6px 0;
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      z-index: 9999;
+    }
+    .scroll-track {
+      display: inline-block;
+      white-space: nowrap;
+      will-change: transform;
+      animation: moveLeft 60s linear infinite; /* slower scroll */
+      padding-left: 100%;
+    }
+    @keyframes moveLeft {
+      0%   { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    /* Animated color cycling (no yellow) */
+    @keyframes colorCycle {
+      0%   { color: red; }
+      25%  { color: orange; }
+      50%  { color: lime; }
+      75%  { color: cyan; }
+      100% { color: red; }
+    }
+    .scroll-track span {
+      animation: colorCycle 4s linear infinite;
+    }
+
+    .truck svg {
+      height: 40px;
+      margin-right: 12px;
+    }
+  </style>
+
+  <!-- Google Maps JS API with Places + Geometry -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCLJtsETdc-9JYoDpN9pua3Thz1rBjGmBc&libraries=geometry,places&callback=initMap"
+    defer>
+  </script>
+</head>
+<body>
+  <div id="controls">
+    <!-- Zone lookup (origin) -->
+    <form onsubmit="lookupZone(); return false;">
+      <input id="address" type="text" placeholder="Enter NZ address">
+      <button type="submit">Find Zone</button>
+    </form>
+
+    <!-- Destination for route (uses last looked-up origin) -->
+    <form onsubmit="calcRoute(); return false;">
+      <input id="to" type="text" placeholder="Enter destination address">
+      <button type="submit">Get Route</button>
+    </form>
+
+    <p id="result"></p>
+  </div>
+
+  <div id="map"></div>
+
+  <!-- Scrolling footer with red truck SVG facing left -->
+  <div class="scroll-text">
+    <div class="scroll-track">
+      <span class="truck">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="160" height="60" role="img" aria-label="Red semi-truck with long trailer" style="transform: scaleX(-1);">
+          <!-- Trailer -->
+          <rect x="10" y="40" width="200" height="50" rx="6" ry="6" fill="#e10600"/>
+          <!-- Hitch -->
+          <rect x="210" y="65" width="6" height="4" fill="#e10600"/>
+          <!-- Cab body -->
+          <rect x="222" y="50" width="28" height="35" rx="4" ry="4" fill="#e10600"/>
+          <!-- Cab hood -->
+          <polygon points="250,50 270,60 270,85 250,85" fill="#e10600"/>
+          <!-- Window -->
+          <rect x="226" y="55" width="22" height="15" rx="2" ry="2" fill="#ffffff" opacity="0.85"/>
+          <!-- Trailer wheels -->
+          <circle cx="50" cy="95" r="12" fill="#111"/>
+          <circle cx="100" cy="95" r="12" fill="#111"/>
+          <circle cx="150" cy="95" r="12" fill="#111"/>
+          <circle cx="200" cy="95" r="12" fill="#111"/>
+          <!-- Cab wheels -->
+          <circle cx="235" cy="95" r="12" fill="#111"/>
+          <circle cx="260" cy="95" r="12" fill="#111"/>
+        </svg>
+      </span>
+      <span>m</span><span>a</span><span>d</span><span>e</span>
+      <span> </span><span>b</span><span>y</span><span> </span>
+      <span>t</span><span>a</span><span>n</span><span>n</span><span>e</span><span>r</span>
+    </div>
+  </div>
+
+  <script>
+    let map;
+    let polygons = [];
+    let autocomplete;
+    let directionsService, directionsRenderer;
+    let startLocation = null; // origin from zone lookup
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: -36.85, lng: 174.76 }, // Auckland default
+        zoom: 5
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
+
+      const input = document.getElementById("address");
+      autocomplete = new google.maps.places.Autocomplete(input, {
+        componentRestrictions: { country: "nz" }
+      });
+
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        if (!place.geometry) return;
+        startLocation = place.geometry.location; // save origin
+        new google.maps.Marker({ position: startLocation, map: map });
+        map.setCenter(startLocation);
+        map.setZoom(12);
+        checkZone(startLocation);
+      });
+
+      input.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          lookupZone();
+        }
+      });
+
+      fetch("zones.geojson", { cache: "no-cache" })
+        .then(res => res.json())
+        .then(data => {
+          data.features.forEach(feature => {
+            const coords = getCoords(feature.geometry);
+            const name = feature.properties.name || "Unnamed";
+            const polygon = new google.maps.Polygon({
+              paths: coords,
+              strokeColor: "#FF0000",
+              strokeOpacity: 0.8,
+              strokeWeight: 2,
+              fillColor: "#FF0000",
+              fillOpacity: 0.35,
+              map: map
+            });
+            polygons.push({ polygon, name });
+          });
+        })
+        .catch(err => console.error("Error loading GeoJSON:", err));
+    }
+
+    function getCoords(geometry) {
+      if (geometry.type === "Polygon") {
+        return geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+      } else if (geometry.type === "MultiPolygon") {
+        return geometry.coordinates.flat(2).map(c => ({ lat: c[1], lng: c[0] }));
+      }
+      return [];
+    }
+
+    function lookupZone() {
+      const place = autocomplete.getPlace();
+      const geocoder = new google.maps.Geocoder();
+
+      if (place && place.geometry) {
+        startLocation = place.geometry.location; // save origin
+        new google.maps.Marker({ position: startLocation, map: map });
+        map.setCenter(startLocation);
+        map.setZoom(12);
+        checkZone(startLocation);
+      } else {
+        const address = document.getElementById("address").value;
+        geocoder.geocode({
+          address,
+          componentRestrictions: { country: "NZ" }
+        }, (results, status) => {
+          if (status === "OK" && results[0]) {
+            startLocation = results[0].geometry.location; // save origin
+            new google.maps.Marker({ position: startLocation, map: map });
+            map.setCenter(startLocation);
+            map.setZoom(12);
+            checkZone(startLocation);
+          } else {
+            document.getElementById("result").textContent =
+              "Geocode failed: " + status;
+          }
+        });
+      }
+    }
+
+    function checkZone(location) {
+      let found = null;
+      polygons.forEach(p => {
+        if (google.maps.geometry.poly.containsLocation(location, p.polygon)) {
+          found = p.name;
+        }
+      });
+
+      if (found) {
+        const repeated = Array(10)
+          .fill(`This address is inside ${found}`)
+          .map(msg => `<span>${msg}</span>`)
+          .join("");
+        document.getElementById("result").innerHTML = repeated;
+      } else {
+        document.getElementById("result").textContent =
+          "This address is outside all zones";
+      }
+    }
+
+    function calcRoute() {
+      if (!startLocation) {
+        document.getElementById("result").textContent =
+          "Please look up a starting address first.";
+        return;
+      }
+
+      const to = document.getElementById("to").value;
+      const request = {
+        origin: startLocation,
+        destination: to,
+        travelMode: google.maps.TravelMode.DRIVING
+      };
+
+      directionsService.route(request, (result, status) => {
+        if (status === "OK") {
+          directionsRenderer.setDirections(result);
+          const leg = result.routes[0].legs[0];
+          document.getElementById("result").textContent =
+            `Distance: ${leg.distance.text}, Duration: ${leg.duration.text}`;
+        } else {
+          document.getElementById("result").textContent =
+            "Route request failed: " + status;
+        }
+      });
+    }
+  </script>
+</body>
+</html>
