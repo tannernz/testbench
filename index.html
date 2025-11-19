@@ -77,20 +77,6 @@
       height: 40px;
       margin-right: 12px;
     }
-    
-    /* Loading indicator */
-    .loading {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 20px;
-      border-radius: 5px;
-      z-index: 10000;
-    }
   </style>
 
   <!-- Google Maps JS API with Places + Geometry -->
@@ -117,11 +103,6 @@
   </div>
 
   <div id="map"></div>
-  
-  <!-- Loading indicator -->
-  <div id="loading" class="loading">
-    Calculating drive-time areas... This may take a minute.
-  </div>
 
   <!-- Scrolling footer with red truck SVG facing left -->
   <div class="scroll-text">
@@ -154,8 +135,7 @@
     let directionsService, directionsRenderer;
     let startLocation = null;
     let startZone = null;
-    let currentMarker = null;
-    let driveTimePolygons = []; // Array to store drive-time polygons
+    let currentMarker = null; // single, replaceable marker
 
     // Branch coordinates
     const branchLocations = [
@@ -235,7 +215,7 @@
               strokeOpacity: 0.6,
               strokeWeight: 2,
               fillColor: "#FF6666",
-              fillOpacity: 0.2,
+              fillOpacity: 0.2, // softer overlay
               map: map
             });
             polygons.push({ polygon, name });
@@ -272,147 +252,6 @@
           title: c.title
         });
       });
-
-      // Calculate drive-time polygons for all branches
-      calculateDriveTimePolygons();
-    }
-
-    // Function to calculate drive-time polygons
-    function calculateDriveTimePolygons() {
-      document.getElementById('loading').style.display = 'block';
-      
-      let completed = 0;
-      const totalBranches = branchLocations.length;
-      
-      branchLocations.forEach((branch, index) => {
-        // Add a small delay between requests to avoid rate limiting
-        setTimeout(() => {
-          calculateDriveTimeForBranch(branch, () => {
-            completed++;
-            if (completed === totalBranches) {
-              document.getElementById('loading').style.display = 'none';
-            }
-          });
-        }, index * 1000); // 1 second between requests
-      });
-    }
-
-    function calculateDriveTimeForBranch(branch, callback) {
-      // Generate points in a circle around the branch
-      const points = generateCirclePoints(branch.lat, branch.lng, 50000, 24); // 50km radius, 24 points
-      
-      const promises = points.map(point => {
-        return new Promise((resolve) => {
-          const request = {
-            origin: new google.maps.LatLng(branch.lat, branch.lng),
-            destination: new google.maps.LatLng(point.lat, point.lng),
-            travelMode: google.maps.TravelMode.DRIVING
-          };
-          
-          directionsService.route(request, (result, status) => {
-            if (status === 'OK') {
-              const leg = result.routes[0].legs[0];
-              const distance = leg.distance.value; // distance in meters
-              
-              // If the road distance is <= 35km, include this point
-              if (distance <= 35000) {
-                resolve(point);
-              } else {
-                resolve(null);
-              }
-            } else {
-              resolve(null);
-            }
-          });
-        });
-      });
-      
-      // Wait for all promises to resolve
-      Promise.all(promises).then(results => {
-        const validPoints = results.filter(point => point !== null);
-        
-        if (validPoints.length >= 3) {
-          // Create a convex hull from the valid points
-          const hull = createConvexHull(validPoints);
-          
-          // Create polygon for this branch's drive-time area
-          const driveTimePolygon = new google.maps.Polygon({
-            paths: hull,
-            strokeColor: '#0066FF',
-            strokeOpacity: 0.6,
-            strokeWeight: 2,
-            fillColor: '#0066FF',
-            fillOpacity: 0.15,
-            map: map,
-            clickable: false
-          });
-          
-          driveTimePolygons.push(driveTimePolygon);
-        }
-        
-        callback();
-      });
-    }
-
-    // Generate points in a circle around a center point
-    function generateCirclePoints(lat, lng, radius, numPoints) {
-      const points = [];
-      for (let i = 0; i < numPoints; i++) {
-        const angle = (i / numPoints) * 2 * Math.PI;
-        const dx = radius * Math.cos(angle);
-        const dy = radius * Math.sin(angle);
-        
-        // Convert meters to latitude/longitude degrees (approximate)
-        const latChange = dy / 111320; // 111,320 meters per degree of latitude
-        const lngChange = dx / (111320 * Math.cos(lat * Math.PI / 180)); // Adjust for longitude
-        
-        points.push({
-          lat: lat + latChange,
-          lng: lng + lngChange
-        });
-      }
-      return points;
-    }
-
-    // Simple convex hull algorithm (Graham scan)
-    function createConvexHull(points) {
-      if (points.length < 3) return points;
-      
-      // Find the point with the lowest y-coordinate
-      let minY = points[0];
-      for (let i = 1; i < points.length; i++) {
-        if (points[i].lat < minY.lat || 
-            (points[i].lat === minY.lat && points[i].lng < minY.lng)) {
-          minY = points[i];
-        }
-      }
-      
-      // Sort points by polar angle with respect to minY
-      const sorted = points.slice().sort((a, b) => {
-        const angleA = Math.atan2(a.lat - minY.lat, a.lng - minY.lng);
-        const angleB = Math.atan2(b.lat - minY.lat, b.lng - minY.lng);
-        return angleA - angleB;
-      });
-      
-      // Build hull
-      const hull = [sorted[0], sorted[1]];
-      
-      for (let i = 2; i < sorted.length; i++) {
-        while (hull.length >= 2 && crossProduct(
-          hull[hull.length - 2], 
-          hull[hull.length - 1], 
-          sorted[i]) <= 0) {
-          hull.pop();
-        }
-        hull.push(sorted[i]);
-      }
-      
-      return hull;
-    }
-
-    // Calculate cross product of vectors OA and OB
-    function crossProduct(o, a, b) {
-      return (a.lng - o.lng) * (b.lat - o.lat) - (a.lat - o.lat) * (b.lng - o.lng);
     }
 
     function placeMarker(location) {
