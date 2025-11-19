@@ -33,10 +33,6 @@
       white-space: nowrap;
       overflow: hidden;
     }
-    #result span {
-      display: inline-block;
-      margin: 0 20px;
-    }
 
     /* Scrolling footer text */
     .scroll-text {
@@ -57,7 +53,7 @@
       display: inline-block;
       white-space: nowrap;
       will-change: transform;
-      animation: moveLeft 40s linear infinite;
+      animation: moveLeft 60s linear infinite;
       padding-left: 100%;
     }
     @keyframes moveLeft {
@@ -112,7 +108,7 @@
   <div class="scroll-text">
     <div class="scroll-track">
       <span class="truck">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="160" height="60" role="img" aria-label="Red semi-truck with long trailer" style="transform: scaleX(-1);">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="160" height="60" style="transform: scaleX(-1);">
           <rect x="10" y="40" width="200" height="50" rx="6" ry="6" fill="#e10600"/>
           <rect x="210" y="65" width="6" height="4" fill="#e10600"/>
           <rect x="222" y="50" width="28" height="35" rx="4" ry="4" fill="#e10600"/>
@@ -139,6 +135,7 @@
     let directionsService, directionsRenderer;
     let startLocation = null;
     let startZone = null;
+    let currentMarker = null; // track current marker
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
@@ -163,7 +160,7 @@
         const place = autocompleteOrigin.getPlace();
         if (!place.geometry) return;
         startLocation = place.geometry.location;
-        new google.maps.Marker({ position: startLocation, map: map });
+        placeMarker(startLocation);
         map.setCenter(startLocation);
         map.setZoom(12);
         checkZone(startLocation, true);
@@ -184,17 +181,24 @@
             const name = feature.properties.name || "Unnamed";
             const polygon = new google.maps.Polygon({
               paths: coords,
-              strokeColor: "#FF0000",
-              strokeOpacity: 0.8,
+              strokeColor: "#FF6666",
+              strokeOpacity: 0.6,
               strokeWeight: 2,
-              fillColor: "#FF0000",
-              fillOpacity: 0.15,
+              fillColor: "#FF6666",
+              fillOpacity: 0.1,
               map: map
             });
             polygons.push({ polygon, name });
           });
         })
         .catch(err => console.error("Error loading GeoJSON:", err));
+    }
+
+    function placeMarker(location) {
+      if (currentMarker) {
+        currentMarker.setMap(null);
+      }
+      currentMarker = new google.maps.Marker({ position: location, map: map });
     }
 
     function getCoords(geometry) {
@@ -212,7 +216,7 @@
 
       if (place && place.geometry) {
         startLocation = place.geometry.location;
-        new google.maps.Marker({ position: startLocation, map: map });
+        placeMarker(startLocation);
         map.setCenter(startLocation);
         map.setZoom(12);
         checkZone(startLocation, true);
@@ -222,7 +226,7 @@
           (results, status) => {
             if (status === "OK" && results[0]) {
               startLocation = results[0].geometry.location;
-              new google.maps.Marker({ position: startLocation, map: map });
+              placeMarker(startLocation);
               map.setCenter(startLocation);
               map.setZoom(12);
               checkZone(startLocation, true);
