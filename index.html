@@ -37,9 +37,13 @@
       font-size: 24px;
       font-weight: bold;
       margin-top: 10px;
-      color: #FF0000;
+      color: #FFFFFF;
       text-align: center;
       display: none;
+      background-color: #FF0000;
+      padding: 10px 20px;
+      border-radius: 5px;
+      display: inline-block;
     }
     #loading-warning {
       font-size: 16px;
@@ -116,7 +120,9 @@
     </form>
 
     <p id="result"></p>
-    <p id="warning">Warning - Local</p>
+    <div style="text-align: center;">
+      <span id="warning">Warning - Local</span>
+    </div>
     <p id="loading-warning">Checking road distance to nearest branch...</p>
   </div>
 
@@ -348,7 +354,7 @@
             
             // If within 35km (35,000 meters) by road, show warning
             if (roadDistance <= 35000) {
-              warningElement.style.display = "block";
+              warningElement.style.display = "inline-block";
             } else {
               warningElement.style.display = "none";
             }
