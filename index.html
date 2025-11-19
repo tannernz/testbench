@@ -41,6 +41,14 @@
       text-align: center;
       display: none;
     }
+    #loading-warning {
+      font-size: 16px;
+      font-weight: normal;
+      margin-top: 5px;
+      color: #666;
+      text-align: center;
+      display: none;
+    }
 
     /* Scrolling footer text */
     .scroll-text {
@@ -61,7 +69,7 @@
       display: inline-block;
       white-space: nowrap;
       will-change: transform;
-      animation: moveLeft 35s linear infinite;
+      animation: moveLeft 60s linear infinite;
       padding-left: 100%;
     }
     @keyframes moveLeft {
@@ -109,6 +117,7 @@
 
     <p id="result"></p>
     <p id="warning">Warning - Local</p>
+    <p id="loading-warning">Checking road distance to nearest branch...</p>
   </div>
 
   <div id="map"></div>
@@ -292,26 +301,64 @@
       return [];
     }
 
-    // Check if location is within 35km of any branch
+    // Check if location is within 35km ROAD DISTANCE of any branch
     function checkLocalWarning(location) {
       const warningElement = document.getElementById("warning");
-      let isLocal = false;
+      const loadingElement = document.getElementById("loading-warning");
       
-      // Check distance to each branch
+      // Hide warning initially, show loading
+      warningElement.style.display = "none";
+      loadingElement.style.display = "block";
+      
+      // Find the closest branch by straight-line distance first
+      let closestBranch = null;
+      let minStraightLineDistance = Infinity;
+      
       branchLocations.forEach(branch => {
         const branchLatLng = new google.maps.LatLng(branch.lat, branch.lng);
-        const distance = google.maps.geometry.spherical.computeDistanceBetween(location, branchLatLng);
+        const straightLineDistance = google.maps.geometry.spherical.computeDistanceBetween(location, branchLatLng);
         
-        // If within 35km (35,000 meters), mark as local
-        if (distance <= 35000) {
-          isLocal = true;
+        if (straightLineDistance < minStraightLineDistance) {
+          minStraightLineDistance = straightLineDistance;
+          closestBranch = branch;
         }
       });
       
-      // Show or hide warning
-      if (isLocal) {
-        warningElement.style.display = "block";
+      // If the closest branch is more than 50km straight-line, it's definitely not within 35km by road
+      if (minStraightLineDistance > 50000) {
+        loadingElement.style.display = "none";
+        warningElement.style.display = "none";
+        return;
+      }
+      
+      // Check road distance to the closest branch
+      if (closestBranch) {
+        const request = {
+          origin: location,
+          destination: new google.maps.LatLng(closestBranch.lat, closestBranch.lng),
+          travelMode: google.maps.TravelMode.DRIVING
+        };
+        
+        directionsService.route(request, (result, status) => {
+          loadingElement.style.display = "none";
+          
+          if (status === "OK") {
+            const leg = result.routes[0].legs[0];
+            const roadDistance = leg.distance.value; // distance in meters
+            
+            // If within 35km (35,000 meters) by road, show warning
+            if (roadDistance <= 35000) {
+              warningElement.style.display = "block";
+            } else {
+              warningElement.style.display = "none";
+            }
+          } else {
+            console.error("Directions request failed for local check:", status);
+            warningElement.style.display = "none";
+          }
+        });
       } else {
+        loadingElement.style.display = "none";
         warningElement.style.display = "none";
       }
     }
@@ -342,6 +389,7 @@
               document.getElementById("result").textContent =
                 "Geocode failed: " + status;
               document.getElementById("warning").style.display = "none";
+              document.getElementById("loading-warning").style.display = "none";
             }
           });
       }
