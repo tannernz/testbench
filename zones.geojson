@@ -275,7 +275,7 @@
 
     {
       "type": "Feature",
-      "properties": { "name": "Zone 5 CHCH" },
+      "properties": { "name": "Zone 5 Christchurch" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
@@ -290,7 +290,7 @@
 
     {
       "type": "Feature",
-      "properties": { "name": "Zone 3 CHCH" },
+      "properties": { "name": "Zone 3 Christchurch" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
@@ -305,7 +305,7 @@
 
     {
       "type": "Feature",
-      "properties": { "name": "Zone 4 CHCH" },
+      "properties": { "name": "Zone 4 Christchurch" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
@@ -320,7 +320,7 @@
 
     {
       "type": "Feature",
-      "properties": { "name": "Zone 1 CHCH" },
+      "properties": { "name": "Zone 1 Christchurch" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
@@ -336,7 +336,7 @@
 
     {
       "type": "Feature",
-      "properties": { "name": "Zone 2 CHCH" },
+      "properties": { "name": "Zone 2 Christchurch" },
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
