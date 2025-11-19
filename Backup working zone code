@@ -330,3 +330,183 @@
     }
   ]
 }
+
+
+
+
+index html backup
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>NZ Zone Lookup</title>
+  <style>
+    #map {
+      height: 80vh;
+      width: 100%;
+    }
+    #controls {
+      margin: 10px;
+      text-align: center;
+    }
+    #address {
+      font-size: 18px;
+      padding: 12px;
+      width: 400px;
+    }
+    #controls button {
+      font-size: 18px;
+      padding: 12px 24px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+    #result {
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 10px;
+      color: #333;
+      text-align: center;
+    }
+
+    /* Scrolling footer text with truck */
+    .scroll-text {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255,255,255,0.95);
+      padding: 6px 0;
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      z-index: 9999;
+    }
+    .scroll-track {
+      display: inline-block;
+      white-space: nowrap;
+      will-change: transform;
+      animation: moveLeft 60s linear infinite;
+      padding-left: 100%;
+    }
+    @keyframes moveLeft {
+      0%   { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    .truck { font-size: 32px; margin-right: 12px; }
+    .green  { color: green; }
+    .blue   { color: blue; }
+    .purple { color: purple; }
+    .red    { color: red; }
+  </style>
+
+  <!-- Google Maps JS API -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCLJtsETdc-9JYoDpN9pua3Thz1rBjGmBc&libraries=geometry&callback=initMap"
+    defer>
+  </script>
+</head>
+<body>
+  <div id="controls">
+    <form onsubmit="lookupZone(); return false;">
+      <input id="address" type="text" placeholder="Enter NZ address">
+      <button type="submit">Find Zone</button>
+    </form>
+    <p id="result"></p>
+  </div>
+
+  <div id="map"></div>
+
+  <!-- Fixed footer scrolling text -->
+  <div class="scroll-text">
+    <div class="scroll-track">
+      <span class="truck">🚚</span>
+      <span class="green">m</span><span class="blue">a</span><span class="purple">d</span><span class="red">e</span>
+      <span class="green"> </span><span class="blue">b</span><span class="purple">y</span><span class="red"> </span>
+      <span class="green">t</span><span class="blue">a</span><span class="purple">n</span><span class="red">n</span>
+      <span class="green">e</span><span class="blue">r</span>
+    </div>
+  </div>
+
+  <script>
+    let map;
+    let polygons = [];
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: -36.85, lng: 174.76 },
+        zoom: 5,
+        restriction: {
+          latLngBounds: {
+            north: -34.0,
+            south: -47.0,
+            west: 166.0,
+            east: 180.0
+          }
+        }
+      });
+
+      // Load GeoJSON
+      fetch("zones.geojson", { cache: "no-cache" })
+        .then(res => res.json())
+        .then(data => {
+          data.features.forEach(feature => {
+            const coords = getCoords(feature.geometry);
+            const name = feature.properties.name || "Unnamed";
+
+            const polygon = new google.maps.Polygon({
+              paths: coords,
+              strokeColor: "#FF0000",
+              strokeOpacity: 0.8,
+              strokeWeight: 2,
+              fillColor: "#FF0000",
+              fillOpacity: 0.35,
+              map: map
+            });
+
+            polygons.push({ polygon, name });
+          });
+        })
+        .catch(err => console.error("Error loading GeoJSON:", err));
+    }
+
+    // Handle Polygon and MultiPolygon
+    function getCoords(geometry) {
+      if (geometry.type === "Polygon") {
+        return geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+      } else if (geometry.type === "MultiPolygon") {
+        return geometry.coordinates.flat(2).map(c => ({ lat: c[1], lng: c[0] }));
+      }
+      return [];
+    }
+
+    function lookupZone() {
+      const geocoder = new google.maps.Geocoder();
+      const address = document.getElementById("address").value;
+
+      geocoder.geocode({ address }, (results, status) => {
+        if (status !== "OK") {
+          document.getElementById("result").textContent = "Geocode failed: " + status;
+          return;
+        }
+
+        const location = results[0].geometry.location;
+        new google.maps.Marker({ position: location, map: map });
+        map.setCenter(location);
+        map.setZoom(12);
+
+        let found = null;
+        polygons.forEach(p => {
+          if (google.maps.geometry.poly.containsLocation(location, p.polygon)) {
+            found = p.name;
+          }
+        });
+
+        document.getElementById("result").textContent =
+          found ? `This address is inside ${found}` : "This address is outside all zones";
+      });
+    }
+  </script>
+</body>
+</html>
