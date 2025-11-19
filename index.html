@@ -29,6 +29,12 @@
       margin-top: 10px;
       color: #333;
       text-align: center;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    #result span {
+      margin: 0 10px;
     }
 
     /* Scrolling footer text with truck */
@@ -108,7 +114,7 @@
             west: 166.0,
             east: 180.0
           },
-          strictBounds: false // 👈 allows smoother dragging
+          strictBounds: false // smoother dragging
         }
       });
 
@@ -158,7 +164,7 @@
 
       geocoder.geocode({
         address,
-        componentRestrictions: { country: "NZ" } // restrict to NZ
+        componentRestrictions: { country: "NZ" }
       }, (results, status) => {
         if (status !== "OK") {
           document.getElementById("result").textContent = "Geocode failed: " + status;
@@ -177,8 +183,15 @@
           }
         });
 
-        document.getElementById("result").textContent =
-          found ? `This address is inside ${found}` : "This address is outside all zones";
+        if (found) {
+          // Repeat the message across the width (static)
+          const repeated = Array(6).fill(`This address is inside ${found}`)
+            .map(msg => `<span>${msg}</span>`).join("");
+          document.getElementById("result").innerHTML = repeated;
+        } else {
+          document.getElementById("result").textContent =
+            "This address is outside all zones";
+        }
       });
     }
   </script>
