@@ -61,25 +61,21 @@
       display: inline-block;
       white-space: nowrap;
       will-change: transform;
-      animation: moveLeft 30s linear infinite; /* slow, right-to-left */
+      animation: moveLeft 60s linear infinite; /* slower: 60s */
       padding-left: 100%; /* ensures full exit before looping */
     }
     @keyframes moveLeft {
       0%   { transform: translateX(100%); }
       100% { transform: translateX(-100%); }
     }
-    .truck {
-      font-size: 32px;   /* bigger truck emoji */
-      margin-right: 12px; /* space between truck and text */
-    }
-    .yellow { color: #CCCC00; } /* darker yellow */
+    .truck { font-size: 32px; margin-right: 12px; }
     .green  { color: green; }
     .blue   { color: blue; }
     .purple { color: purple; }
     .red    { color: red; }
   </style>
 
-  <!-- Load Google Maps JS API with callback -->
+  <!-- Load Google Maps JS API with your key and callback -->
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCLJtsETdc-9JYoDpN9pua3Thz1rBjGmBc&libraries=geometry&callback=initMap"
     defer>
@@ -100,20 +96,20 @@
   <div class="scroll-text">
     <div class="scroll-track">
       <span class="truck">🚚</span>
-      <span class="yellow">m</span>
-      <span class="green">a</span>
-      <span class="blue">d</span>
-      <span class="purple">e</span>
+      <span class="green">m</span>
+      <span class="blue">a</span>
+      <span class="purple">d</span>
+      <span class="red">e</span>
+      <span class="green"> </span>
+      <span class="blue">b</span>
+      <span class="purple">y</span>
       <span class="red"> </span>
-      <span class="yellow">b</span>
-      <span class="green">y</span>
-      <span class="blue"> </span>
-      <span class="purple">t</span>
-      <span class="red">a</span>
-      <span class="yellow">n</span>
-      <span class="green">n</span>
-      <span class="blue">e</span>
-      <span class="purple">r</span>
+      <span class="green">t</span>
+      <span class="blue">a</span>
+      <span class="purple">n</span>
+      <span class="red">n</span>
+      <span class="green">e</span>
+      <span class="blue">r</span>
     </div>
   </div>
 
