@@ -15,7 +15,7 @@
     #address, #to {
       font-size: 18px;
       padding: 12px;
-      width: 300px;
+      width: 320px;
       margin: 5px;
     }
     #controls button {
@@ -25,8 +25,8 @@
       cursor: pointer;
     }
     #result {
-      font-size: 28px;
-      font-weight: bold;
+      font-size: 22px;
+      font-weight: 600;
       margin-top: 10px;
       color: #333;
       text-align: center;
@@ -135,11 +135,23 @@
     let directionsService, directionsRenderer;
     let startLocation = null;
     let startZone = null;
-    let currentMarker = null; // track current marker
+    let currentMarker = null; // single, replaceable marker
+
+    // Branch coordinates (pre-geocoded)
+    const branchLocations = [
+      {lat: -36.7512, lng: 174.7062, title: "200 Bush Road, Albany"},
+      {lat: -37.7375, lng: 175.2207, title: "62/68 The Boulevard, Te Rapa Park, Hamilton"},
+      {lat: -37.6645, lng: 176.2069, title: "141 Newton Street, Mt Maunganui"},
+      {lat: -40.3410, lng: 175.5956, title: "17 Bennett Street, Cloverlea, Palmerston North"},
+      {lat: -41.2494, lng: 174.9099, title: "65 Seaview Road, Lower Hutt"},
+      {lat: -41.3020, lng: 173.2230, title: "4 Tokomaru Place, Nelson"},
+      {lat: -43.5333, lng: 172.5500, title: "15 Foremans Road, Christchurch"},
+      {lat: -45.8742, lng: 170.5036, title: "32 McNab Street, Dunedin"}
+    ];
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: -36.85, lng: 174.76 },
+        center: { lat: -40.9, lng: 174.9 }, // NZ center
         zoom: 5
       });
 
@@ -166,13 +178,21 @@
         checkZone(startLocation, true);
       });
 
-      inputOrigin.addEventListener("keydown", function(e) {
+      inputOrigin.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           lookupZone();
         }
       });
 
+      inputDest.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          calcRoute();
+        }
+      });
+
+      // Load zones
       fetch("zones.geojson", { cache: "no-cache" })
         .then(res => res.json())
         .then(data => {
@@ -185,19 +205,37 @@
               strokeOpacity: 0.6,
               strokeWeight: 2,
               fillColor: "#FF6666",
-              fillOpacity: 0.1,
+              fillOpacity: 0.2, // softer overlay
               map: map
             });
             polygons.push({ polygon, name });
           });
         })
         .catch(err => console.error("Error loading GeoJSON:", err));
+
+      // Mark branches with a building icon (SVG path)
+      const buildingIcon = {
+        path: "M2,22 L2,10 L10,6 L18,10 L18,22 L2,22 Z M5,22 L5,14 L8,14 L8,22 Z M12,22 L12,14 L15,14 L15,22 Z M2,10 L10,6 L18,10", // simple building+roof
+        fillColor: "#1e6bd6",
+        fillOpacity: 0.95,
+        strokeColor: "#0d3a84",
+        strokeWeight: 1.5,
+        scale: 1.6,
+        anchor: new google.maps.Point(10, 22)
+      };
+
+      branchLocations.forEach(branch => {
+        new google.maps.Marker({
+          position: { lat: branch.lat, lng: branch.lng },
+          map: map,
+          icon: buildingIcon,
+          title: branch.title
+        });
+      });
     }
 
     function placeMarker(location) {
-      if (currentMarker) {
-        currentMarker.setMap(null);
-      }
+      if (currentMarker) currentMarker.setMap(null);
       currentMarker = new google.maps.Marker({ position: location, map: map });
     }
 
@@ -247,12 +285,10 @@
         }
       });
 
-      if (updateStart) {
-        startZone = found || null;
-      }
+      if (updateStart) startZone = found || null;
 
       if (found) {
-        const repeated = Array(10)
+        const repeated = Array(6)
           .fill(`This address is inside ${found}`)
           .map(msg => `<span>${msg}</span>`)
           .join("");
