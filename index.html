@@ -33,6 +33,13 @@
       white-space: nowrap;
       overflow: hidden;
     }
+    #zone-info {
+      font-size: 28px;
+      font-weight: bold;
+      margin-top: 10px;
+      color: #FF0000;
+      text-align: center;
+    }
     #warning {
       font-size: 24px;
       font-weight: bold;
@@ -106,18 +113,15 @@
 </head>
 <body>
   <div id="controls">
-    <!-- Zone lookup (origin) -->
-    <form onsubmit="lookupZone(); return false;">
-      <input id="address" type="text" placeholder="Enter NZ address">
-      <button type="submit">Find Zone</button>
-    </form>
-
-    <!-- Destination for route -->
+    <!-- Combined form for both addresses -->
     <form onsubmit="calcRoute(); return false;">
-      <input id="to" type="text" placeholder="Enter destination address">
-      <button type="submit">Get Route</button>
+      <input id="address" type="text" placeholder="Enter first NZ address">
+      <input id="to" type="text" placeholder="Enter second NZ address">
+      <button type="submit">Get Route & Zones</button>
+      <button type="button" onclick="clearSearch()">Clear Search</button>
     </form>
 
+    <div id="zone-info"></div>
     <p id="result"></p>
     <div style="text-align: center;">
       <span id="warning" style="display: none;">Warning - Local</span>
@@ -158,8 +162,9 @@
     let directionsService, directionsRenderer;
     let startLocation = null;
     let startZone = null;
-    let currentMarker = null;
     let destLocation = null;
+    let destZone = null;
+    let currentMarker = null;
 
     // Branch coordinates
     const branchLocations = [
@@ -190,7 +195,10 @@
       });
 
       directionsService = new google.maps.DirectionsService();
-      directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
+      directionsRenderer = new google.maps.DirectionsRenderer({ 
+        map: map,
+        suppressMarkers: true // We'll use our own markers
+      });
 
       const inputOrigin = document.getElementById("address");
       autocompleteOrigin = new google.maps.places.Autocomplete(inputOrigin, {
@@ -202,25 +210,10 @@
         componentRestrictions: { country: "nz" }
       });
 
-      autocompleteOrigin.addListener("place_changed", () => {
-        const place = autocompleteOrigin.getPlace();
-        if (!place.geometry) return;
-        startLocation = place.geometry.location;
-        placeMarker(startLocation);
-        map.setCenter(startLocation);
-        map.setZoom(12);
-        checkZone(startLocation, true);
-        if (destLocation) {
-          checkLocalWarning();
-        } else {
-          document.getElementById("warning").style.display = "none";
-        }
-      });
-
       inputOrigin.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          lookupZone();
+          calcRoute();
         }
       });
 
@@ -297,9 +290,52 @@
       });
     }
 
-    function placeMarker(location) {
+    function clearSearch() {
+      // Clear input fields
+      document.getElementById("address").value = "";
+      document.getElementById("to").value = "";
+      
+      // Clear results
+      document.getElementById("result").textContent = "";
+      document.getElementById("zone-info").textContent = "";
+      document.getElementById("warning").style.display = "none";
+      
+      // Clear map
+      directionsRenderer.setDirections({routes: []});
+      if (currentMarker) {
+        currentMarker.setMap(null);
+        currentMarker = null;
+      }
+      
+      // Reset locations
+      startLocation = null;
+      destLocation = null;
+      startZone = null;
+      destZone = null;
+      
+      // Reset map view
+      map.setCenter({ lat: -40.9, lng: 174.9 });
+      map.setZoom(5);
+    }
+
+    function placeMarker(location, isStart) {
       if (currentMarker) currentMarker.setMap(null);
-      currentMarker = new google.maps.Marker({ position: location, map: map });
+      
+      const markerIcon = {
+        path: google.maps.SymbolPath.CIRCLE,
+        fillColor: isStart ? "#0000FF" : "#00FF00",
+        fillOpacity: 0.9,
+        strokeColor: "#000000",
+        strokeWeight: 2,
+        scale: 8
+      };
+      
+      currentMarker = new google.maps.Marker({ 
+        position: location, 
+        map: map,
+        icon: markerIcon,
+        title: isStart ? "Start Location" : "Destination"
+      });
     }
 
     function getCoords(geometry) {
@@ -400,135 +436,101 @@
       });
     }
 
-    function lookupZone() {
-      const place = autocompleteOrigin.getPlace();
-      const geocoder = new google.maps.Geocoder();
-
-      if (place && place.geometry) {
-        startLocation = place.geometry.location;
-        placeMarker(startLocation);
-        map.setCenter(startLocation);
-        map.setZoom(12);
-        checkZone(startLocation, true);
-        if (destLocation) {
-          checkLocalWarning();
-        } else {
-          document.getElementById("warning").style.display = "none";
-        }
-      } else {
-        const address = document.getElementById("address").value;
-        geocoder.geocode({ address, componentRestrictions: { country: "NZ" } },
-          (results, status) => {
-            if (status === "OK" && results[0]) {
-              startLocation = results[0].geometry.location;
-              placeMarker(startLocation);
-              map.setCenter(startLocation);
-              map.setZoom(12);
-              checkZone(startLocation, true);
-              if (destLocation) {
-                checkLocalWarning();
-              } else {
-                document.getElementById("warning").style.display = "none";
-              }
-            } else {
-              document.getElementById("result").textContent =
-                "Geocode failed: " + status;
-              document.getElementById("warning").style.display = "none";
-              document.getElementById("loading-warning").style.display = "none";
-            }
-          });
-      }
-    }
-
-    // If updateStart is true, also set startZone
-    function checkZone(location, updateStart = false) {
+    // Determine zone for a location
+    function getZone(location) {
       let found = null;
       polygons.forEach(p => {
         if (google.maps.geometry.poly.containsLocation(location, p.polygon)) {
           found = p.name;
         }
       });
-
-      if (updateStart) startZone = found || null;
-
-      if (found) {
-        const repeated = Array(6)
-          .fill(`This address is inside ${found}`)
-          .map(msg => `<span>${msg}</span>`)
-          .join("");
-        document.getElementById("result").innerHTML = repeated;
-      } else {
-        document.getElementById("result").textContent =
-          "This address is outside all zones";
-      }
+      return found || "Outside all zones";
     }
 
     function calcRoute() {
-      if (!startLocation) {
-        document.getElementById("result").textContent =
-          "Please look up a starting address first.";
+      const address1 = document.getElementById("address").value;
+      const address2 = document.getElementById("to").value;
+
+      if (!address1 || !address2) {
+        document.getElementById("result").textContent = "Please enter both addresses.";
         return;
       }
 
-      const place = autocompleteDest.getPlace();
       const geocoder = new google.maps.Geocoder();
+      
+      // Geocode both addresses
+      Promise.all([
+        new Promise((resolve) => {
+          geocoder.geocode({ address: address1, componentRestrictions: { country: "NZ" } },
+            (results, status) => {
+              if (status === "OK" && results[0]) {
+                startLocation = results[0].geometry.location;
+                resolve(startLocation);
+              } else {
+                document.getElementById("result").textContent = "First address geocode failed.";
+                resolve(null);
+              }
+            });
+        }),
+        new Promise((resolve) => {
+          geocoder.geocode({ address: address2, componentRestrictions: { country: "NZ" } },
+            (results, status) => {
+              if (status === "OK" && results[0]) {
+                destLocation = results[0].geometry.location;
+                resolve(destLocation);
+              } else {
+                document.getElementById("result").textContent = "Second address geocode failed.";
+                resolve(null);
+              }
+            });
+        })
+      ]).then(([startLoc, destLoc]) => {
+        if (!startLoc || !destLoc) return;
 
-      if (place && place.geometry) {
-        destLocation = place.geometry.location;
-        handleRoute(destLocation);
-      } else {
-        const to = document.getElementById("to").value;
-        geocoder.geocode({ address: to, componentRestrictions: { country: "NZ" } },
-          (results, status) => {
-            if (status === "OK" && results[0]) {
-              destLocation = results[0].geometry.location;
-              handleRoute(destLocation);
-            } else {
-              document.getElementById("result").textContent =
-                "Destination geocode failed: " + status;
-            }
-          });
-      }
-    }
+        // Get zones for both locations
+        startZone = getZone(startLoc);
+        destZone = getZone(destLoc);
 
-    function handleRoute(destLoc) {
-      // Determine destination zone
-      let destZone = null;
-      polygons.forEach(p => {
-        if (google.maps.geometry.poly.containsLocation(destLoc, p.polygon)) {
-          destZone = p.name;
-        }
-      });
+        // Display zone information prominently
+        const zoneInfo = `Zones: <span style="color:red; font-weight:bold;">${startZone}</span> <span style="font-weight:bold; text-decoration:underline;">to</span> <span style="color:red; font-weight:bold;">${destZone}</span>`;
+        document.getElementById("zone-info").innerHTML = zoneInfo;
 
-      const request = {
-        origin: startLocation,
-        destination: destLoc,
-        travelMode: google.maps.TravelMode.DRIVING
-      };
+        // Calculate route with optimized settings for Auckland
+        const request = {
+          origin: startLoc,
+          destination: destLoc,
+          travelMode: google.maps.TravelMode.DRIVING,
+          provideRouteAlternatives: false,
+          avoidHighways: false,
+          avoidTolls: false,
+          optimizeWaypoints: false
+        };
 
-      directionsService.route(request, (result, status) => {
-        if (status === "OK") {
-          directionsRenderer.setDirections(result);
-          const leg = result.routes[0].legs[0];
+        directionsService.route(request, (result, status) => {
+          if (status === "OK") {
+            directionsRenderer.setDirections(result);
+            const leg = result.routes[0].legs[0];
 
-          let zoneInfo = "";
-          if (startZone && destZone) {
-            zoneInfo = ` | Zones: <span style="color:red; font-weight:bold;">${startZone}</span> <span style="font-weight:bold; text-decoration:underline;">to</span> <span style="color:red; font-weight:bold;">${destZone}</span>`;
-          } else if (startZone && !destZone) {
-            zoneInfo = ` | Zones: <span style="color:red; font-weight:bold;">${startZone}</span> <span style="font-weight:bold; text-decoration:underline;">to</span> Outside zones`;
-          } else if (!startZone && destZone) {
-            zoneInfo = ` | Zones: Outside zones <span style="font-weight:bold; text-decoration:underline;">to</span> <span style="color:red; font-weight:bold;">${destZone}</span>`;
+            // Place markers for start and end
+            placeMarker(startLoc, true);
+            placeMarker(destLoc, false);
+
+            // Display route info
+            document.getElementById("result").innerHTML =
+              `Distance: ${leg.distance.text} | Duration: ${leg.duration.text}`;
+
+            // Check if both locations are local
+            checkLocalWarning();
+
+            // Adjust map view to show the route
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(startLoc);
+            bounds.extend(destLoc);
+            map.fitBounds(bounds);
+          } else {
+            document.getElementById("result").textContent = "Route request failed: " + status;
           }
-
-          document.getElementById("result").innerHTML =
-            `Distance: ${leg.distance.text} | Duration: ${leg.duration.text}${zoneInfo}`;
-          
-          // Check if BOTH locations are local after route calculation
-          checkLocalWarning();
-        } else {
-          document.getElementById("result").textContent =
-            "Route request failed: " + status;
-        }
+        });
       });
     }
   </script>
