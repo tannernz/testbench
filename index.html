@@ -642,7 +642,19 @@
       if (!currentRoutes[routeIndex]) return;
       
       const route = currentRoutes[routeIndex];
-      directionsRenderer.setDirections({routes: [route]});
+      
+      // Create a new DirectionsResult object with just the selected route
+      const directionsResult = {
+        routes: [route],
+        request: {
+          origin: startLocation,
+          destination: destLocation,
+          travelMode: google.maps.TravelMode.DRIVING
+        }
+      };
+      
+      // Set the directions on the renderer
+      directionsRenderer.setDirections(directionsResult);
       
       // Place markers for start and end
       clearMarkers();
