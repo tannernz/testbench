@@ -59,6 +59,28 @@
       text-align: center;
       display: none;
     }
+    #route-alternatives {
+      margin-top: 10px;
+      text-align: center;
+    }
+    .route-option {
+      display: inline-block;
+      margin: 5px;
+      padding: 8px 16px;
+      background-color: #f0f0f0;
+      border: 2px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .route-option:hover {
+      background-color: #e0e0e0;
+    }
+    .route-option.selected {
+      background-color: #4CAF50;
+      color: white;
+      border-color: #45a049;
+    }
 
     /* Scrolling footer text */
     .scroll-text {
@@ -114,15 +136,16 @@
 <body>
   <div id="controls">
     <!-- Combined form for both addresses -->
-    <form onsubmit="calcRoute(); return false;">
+    <form onsubmit="handleSearch(); return false;">
       <input id="address" type="text" placeholder="Enter first NZ address">
-      <input id="to" type="text" placeholder="Enter second NZ address">
-      <button type="submit">Get Route & Zones</button>
+      <input id="to" type="text" placeholder="Enter second NZ address (optional)">
+      <button type="submit">Search</button>
       <button type="button" onclick="clearSearch()">Clear Search</button>
     </form>
 
     <div id="zone-info"></div>
     <p id="result"></p>
+    <div id="route-alternatives"></div>
     <div style="text-align: center;">
       <span id="warning" style="display: none;">Warning - Local</span>
     </div>
@@ -164,7 +187,9 @@
     let startZone = null;
     let destLocation = null;
     let destZone = null;
-    let currentMarker = null;
+    let currentMarkers = [];
+    let currentRoutes = [];
+    let selectedRouteIndex = 0;
 
     // Branch coordinates
     const branchLocations = [
@@ -191,13 +216,21 @@
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: -40.9, lng: 174.9 }, // NZ center
-        zoom: 5
+        zoom: 5,
+        zoomControl: true,
+        mapTypeControl: true,
+        scaleControl: true,
+        streetViewControl: true,
+        rotateControl: true,
+        fullscreenControl: true,
+        gestureHandling: "greedy" // This enables normal mouse scroll zoom without requiring Ctrl key
       });
 
       directionsService = new google.maps.DirectionsService();
       directionsRenderer = new google.maps.DirectionsRenderer({ 
         map: map,
-        suppressMarkers: true // We'll use our own markers
+        suppressMarkers: true, // We'll use our own markers
+        suppressInfoWindows: false
       });
 
       const inputOrigin = document.getElementById("address");
@@ -213,14 +246,14 @@
       inputOrigin.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          calcRoute();
+          handleSearch();
         }
       });
 
       inputDest.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          calcRoute();
+          handleSearch();
         }
       });
 
@@ -290,6 +323,55 @@
       });
     }
 
+    function handleSearch() {
+      const address1 = document.getElementById("address").value;
+      const address2 = document.getElementById("to").value;
+
+      if (!address1) {
+        document.getElementById("result").textContent = "Please enter at least the first address.";
+        return;
+      }
+
+      if (!address2) {
+        // Single address search - just find zone
+        lookupZoneOnly(address1);
+      } else {
+        // Two addresses - calculate route with alternatives
+        calcRoute(address1, address2);
+      }
+    }
+
+    function lookupZoneOnly(address) {
+      const geocoder = new google.maps.Geocoder();
+      
+      geocoder.geocode({ address: address, componentRestrictions: { country: "NZ" } },
+        (results, status) => {
+          if (status === "OK" && results[0]) {
+            const location = results[0].geometry.location;
+            const zone = getZone(location);
+            
+            // Clear previous results
+            clearMarkers();
+            directionsRenderer.setDirections({routes: []});
+            document.getElementById("route-alternatives").innerHTML = "";
+            
+            // Place marker
+            placeMarker(location, true);
+            
+            // Display zone information
+            document.getElementById("zone-info").innerHTML = `Zone: <span style="color:red; font-weight:bold;">${zone}</span>`;
+            document.getElementById("result").textContent = `Address: ${results[0].formatted_address}`;
+            document.getElementById("warning").style.display = "none";
+            
+            // Center map on location
+            map.setCenter(location);
+            map.setZoom(12);
+          } else {
+            document.getElementById("result").textContent = "Address geocode failed.";
+          }
+        });
+    }
+
     function clearSearch() {
       // Clear input fields
       document.getElementById("address").value = "";
@@ -299,28 +381,31 @@
       document.getElementById("result").textContent = "";
       document.getElementById("zone-info").textContent = "";
       document.getElementById("warning").style.display = "none";
+      document.getElementById("route-alternatives").innerHTML = "";
       
       // Clear map
       directionsRenderer.setDirections({routes: []});
-      if (currentMarker) {
-        currentMarker.setMap(null);
-        currentMarker = null;
-      }
+      clearMarkers();
       
       // Reset locations
       startLocation = null;
       destLocation = null;
       startZone = null;
       destZone = null;
+      currentRoutes = [];
+      selectedRouteIndex = 0;
       
       // Reset map view
       map.setCenter({ lat: -40.9, lng: 174.9 });
       map.setZoom(5);
     }
 
+    function clearMarkers() {
+      currentMarkers.forEach(marker => marker.setMap(null));
+      currentMarkers = [];
+    }
+
     function placeMarker(location, isStart) {
-      if (currentMarker) currentMarker.setMap(null);
-      
       const markerIcon = {
         path: google.maps.SymbolPath.CIRCLE,
         fillColor: isStart ? "#0000FF" : "#00FF00",
@@ -330,12 +415,14 @@
         scale: 8
       };
       
-      currentMarker = new google.maps.Marker({ 
+      const marker = new google.maps.Marker({ 
         position: location, 
         map: map,
         icon: markerIcon,
         title: isStart ? "Start Location" : "Destination"
       });
+      
+      currentMarkers.push(marker);
     }
 
     function getCoords(geometry) {
@@ -447,15 +534,7 @@
       return found || "Outside all zones";
     }
 
-    function calcRoute() {
-      const address1 = document.getElementById("address").value;
-      const address2 = document.getElementById("to").value;
-
-      if (!address1 || !address2) {
-        document.getElementById("result").textContent = "Please enter both addresses.";
-        return;
-      }
-
+    function calcRoute(address1, address2) {
       const geocoder = new google.maps.Geocoder();
       
       // Geocode both addresses
@@ -495,43 +574,92 @@
         const zoneInfo = `Zones: <span style="color:red; font-weight:bold;">${startZone}</span> <span style="font-weight:bold; text-decoration:underline;">to</span> <span style="color:red; font-weight:bold;">${destZone}</span>`;
         document.getElementById("zone-info").innerHTML = zoneInfo;
 
-        // Calculate route with optimized settings for Auckland
+        // Calculate route with multiple alternatives
         const request = {
           origin: startLoc,
           destination: destLoc,
           travelMode: google.maps.TravelMode.DRIVING,
-          provideRouteAlternatives: false,
-          avoidHighways: false,
-          avoidTolls: false,
-          optimizeWaypoints: false
+          provideRouteAlternatives: true // This gets multiple route options
         };
 
         directionsService.route(request, (result, status) => {
           if (status === "OK") {
-            directionsRenderer.setDirections(result);
-            const leg = result.routes[0].legs[0];
-
-            // Place markers for start and end
-            placeMarker(startLoc, true);
-            placeMarker(destLoc, false);
-
-            // Display route info
-            document.getElementById("result").innerHTML =
-              `Distance: ${leg.distance.text} | Duration: ${leg.duration.text}`;
-
+            currentRoutes = result.routes;
+            selectedRouteIndex = 0;
+            
+            // Display the first route by default
+            displayRoute(selectedRouteIndex);
+            
+            // Show route alternatives for user to choose from
+            displayRouteAlternatives(result.routes);
+            
             // Check if both locations are local
             checkLocalWarning();
 
-            // Adjust map view to show the route
-            const bounds = new google.maps.LatLngBounds();
-            bounds.extend(startLoc);
-            bounds.extend(destLoc);
-            map.fitBounds(bounds);
           } else {
             document.getElementById("result").textContent = "Route request failed: " + status;
           }
         });
       });
+    }
+
+    function displayRouteAlternatives(routes) {
+      const alternativesDiv = document.getElementById("route-alternatives");
+      alternativesDiv.innerHTML = "<strong>Route Options:</strong><br>";
+      
+      routes.forEach((route, index) => {
+        const leg = route.legs[0];
+        const routeDiv = document.createElement("div");
+        routeDiv.className = `route-option ${index === 0 ? 'selected' : ''}`;
+        routeDiv.innerHTML = `
+          Route ${index + 1}: 
+          ${leg.distance.text} • 
+          ${leg.duration.text}
+        `;
+        routeDiv.onclick = () => selectRoute(index);
+        alternativesDiv.appendChild(routeDiv);
+      });
+    }
+
+    function selectRoute(index) {
+      selectedRouteIndex = index;
+      
+      // Update the selected style
+      const routeOptions = document.querySelectorAll('.route-option');
+      routeOptions.forEach((option, i) => {
+        if (i === index) {
+          option.classList.add('selected');
+        } else {
+          option.classList.remove('selected');
+        }
+      });
+      
+      // Display the selected route
+      displayRoute(index);
+    }
+
+    function displayRoute(routeIndex) {
+      if (!currentRoutes[routeIndex]) return;
+      
+      const route = currentRoutes[routeIndex];
+      directionsRenderer.setDirections({routes: [route]});
+      
+      // Place markers for start and end
+      clearMarkers();
+      placeMarker(startLocation, true);
+      placeMarker(destLocation, false);
+
+      const leg = route.legs[0];
+      
+      // Display route info
+      document.getElementById("result").innerHTML =
+        `Distance: ${leg.distance.text} | Duration: ${leg.duration.text}`;
+
+      // Adjust map view to show the route
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend(startLocation);
+      bounds.extend(destLocation);
+      map.fitBounds(bounds);
     }
   </script>
 </body>
