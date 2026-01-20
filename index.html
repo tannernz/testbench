@@ -870,8 +870,16 @@
     bedroomsSelect.addEventListener('change', updateCalculator);
     livingAreasSelect.addEventListener('change', updateCalculator);
 
-    // Check if address is in Wellington zones ONLY (exclude Palmerston North)
-    function checkIfShowCalculator(zoneName) {
+    // Check if zone is Wellington zone (for starting address only)
+    function checkIfShowCalculator(zoneName, isStartingAddress = true) {
+      // Only show calculator for starting address zones
+      if (!isStartingAddress) {
+        calculatorTrigger.classList.remove('show');
+        calculatorTrigger.classList.remove('recommended');
+        surveyCalculator.classList.remove('show');
+        return;
+      }
+      
       const zone = zoneName || '';
       let shouldShow = false;
       let detectedZone = '';
@@ -1140,8 +1148,8 @@
             document.getElementById("result").textContent = `Address: ${results[0].formatted_address}`;
             document.getElementById("warning").style.display = "none";
             
-            // Check if we should show the survey calculator
-            checkIfShowCalculator(zone);
+            // Check if we should show the survey calculator (starting address only)
+            checkIfShowCalculator(zone, true);
             
             // Center map on location
             map.setCenter(location);
@@ -1365,11 +1373,9 @@
         const zoneInfo = `Zones: <span style="color:var(--zone-color); font-weight:bold;">${startZone}</span> <span style="font-weight:bold; text-decoration:underline;">to</span> <span style="color:var(--zone-color); font-weight:bold;">${destZone}</span>`;
         document.getElementById("zone-info").innerHTML = zoneInfo;
 
-        // Check if we should show calculator for either zone
-        checkIfShowCalculator(startZone);
-        if (startZone !== destZone) {
-          checkIfShowCalculator(destZone);
-        }
+        // Only check if the STARTING address is Wellington for calculator
+        checkIfShowCalculator(startZone, true);
+        // Do NOT check the destination address
 
         // Calculate route with multiple alternatives
         const request = {
