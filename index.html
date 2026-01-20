@@ -4,82 +4,177 @@
   <meta charset="utf-8">
   <title>NZ Zone Lookup + Directions</title>
   <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #333333;
+      --input-bg: #ffffff;
+      --input-border: #cccccc;
+      --button-bg: #f0f0f0;
+      --button-hover: #e0e0e0;
+      --map-controls-bg: #ffffff;
+      --warning-bg: #FF0000;
+      --warning-text: #FFFFFF;
+      --scroll-bg: rgba(255,255,255,0.95);
+      --zone-color: #FF0000;
+      --result-color: #333333;
+    }
+
+    .dark-mode {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --input-bg: #2d2d2d;
+      --input-border: #444444;
+      --button-bg: #3a3a3a;
+      --button-hover: #4a4a4a;
+      --map-controls-bg: #2d2d2d;
+      --warning-bg: #cc0000;
+      --warning-text: #ffffff;
+      --scroll-bg: rgba(30,30,30,0.95);
+      --zone-color: #ff6666;
+      --result-color: #e0e0e0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s, color 0.3s;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
     #map {
       height: 80vh;
       width: 100%;
     }
+    
     #controls {
       margin: 10px;
       text-align: center;
+      padding: 15px;
+      background-color: var(--bg-color);
     }
+    
     #address, #to {
       font-size: 18px;
       padding: 12px;
       width: 320px;
       margin: 5px;
+      background-color: var(--input-bg);
+      color: var(--text-color);
+      border: 2px solid var(--input-border);
+      border-radius: 4px;
+      transition: all 0.3s;
     }
+    
     #controls button {
       font-size: 18px;
       padding: 12px 24px;
       margin: 5px;
       cursor: pointer;
+      background-color: var(--button-bg);
+      color: var(--text-color);
+      border: 2px solid var(--input-border);
+      border-radius: 4px;
+      transition: all 0.3s;
     }
+    
+    #controls button:hover {
+      background-color: var(--button-hover);
+    }
+    
     #result {
       font-size: 22px;
       font-weight: 600;
       margin-top: 10px;
-      color: #333;
+      color: var(--result-color);
       text-align: center;
       white-space: nowrap;
       overflow: hidden;
     }
+    
     #zone-info {
       font-size: 28px;
       font-weight: bold;
       margin-top: 10px;
-      color: #FF0000;
+      color: var(--zone-color);
       text-align: center;
     }
+    
     #warning {
       font-size: 24px;
       font-weight: bold;
       margin-top: 10px;
-      color: #FFFFFF;
+      color: var(--warning-text);
       text-align: center;
-      background-color: #FF0000;
+      background-color: var(--warning-bg);
       padding: 10px 20px;
       border-radius: 5px;
       display: inline-block;
     }
+    
     #loading-warning {
       font-size: 16px;
       font-weight: normal;
       margin-top: 5px;
-      color: #666;
+      color: var(--text-color);
+      opacity: 0.7;
       text-align: center;
       display: none;
     }
+    
     #route-alternatives {
       margin-top: 10px;
       text-align: center;
     }
+    
     .route-option {
       display: inline-block;
       margin: 5px;
       padding: 8px 16px;
-      background-color: #f0f0f0;
-      border: 2px solid #ccc;
+      background-color: var(--button-bg);
+      color: var(--text-color);
+      border: 2px solid var(--input-border);
       border-radius: 5px;
       cursor: pointer;
       font-size: 16px;
+      transition: all 0.3s;
     }
+    
     .route-option:hover {
-      background-color: #e0e0e0;
+      background-color: var(--button-hover);
     }
+    
     .route-option.selected {
       background-color: #4CAF50;
       color: white;
       border-color: #45a049;
+    }
+
+    /* Dark mode toggle button */
+    #dark-mode-toggle {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      z-index: 1000;
+      background-color: var(--button-bg);
+      color: var(--text-color);
+      border: 2px solid var(--input-border);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    #dark-mode-toggle:hover {
+      background-color: var(--button-hover);
+      transform: scale(1.1);
     }
 
     /* Scrolling footer text */
@@ -88,7 +183,7 @@
       bottom: 0;
       left: 0;
       right: 0;
-      background: rgba(255,255,255,0.95);
+      background: var(--scroll-bg);
       padding: 6px 0;
       text-align: center;
       font-size: 28px;
@@ -96,7 +191,9 @@
       white-space: nowrap;
       overflow: hidden;
       z-index: 9999;
+      transition: background 0.3s;
     }
+    
     .scroll-track {
       display: inline-block;
       white-space: nowrap;
@@ -104,6 +201,7 @@
       animation: moveLeft 35s linear infinite;
       padding-left: 100%;
     }
+    
     @keyframes moveLeft {
       0%   { transform: translateX(100%); }
       100% { transform: translateX(-100%); }
@@ -117,6 +215,7 @@
       75%  { color: cyan; }
       100% { color: red; }
     }
+    
     .scroll-track span {
       animation: colorCycle 4s linear infinite;
     }
@@ -124,6 +223,25 @@
     .truck svg {
       height: 40px;
       margin-right: 12px;
+    }
+
+    /* Map controls dark mode */
+    .gm-style .gm-style-iw,
+    .gm-style .gm-style-iw-c {
+      background-color: var(--map-controls-bg) !important;
+      color: var(--text-color) !important;
+    }
+
+    .gm-style .gm-style-iw-t::after {
+      background: var(--map-controls-bg) !important;
+    }
+
+    /* Adjust Google Maps controls for dark mode */
+    .dark-mode .gm-style .gm-control-active,
+    .dark-mode .gm-style .gm-svpc,
+    .dark-mode .gm-style button {
+      background-color: var(--map-controls-bg) !important;
+      color: var(--text-color) !important;
     }
   </style>
 
@@ -134,6 +252,11 @@
   </script>
 </head>
 <body>
+  <!-- Dark Mode Toggle Button -->
+  <button id="dark-mode-toggle" title="Toggle Dark Mode">
+    🌙
+  </button>
+
   <div id="controls">
     <!-- Combined form for both addresses -->
     <form onsubmit="handleSearch(); return false;">
@@ -179,6 +302,36 @@
   </div>
 
   <script>
+    // Dark mode functionality
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+    // Check for saved theme or user preference
+    const currentTheme = localStorage.getItem('theme') || 
+                       (prefersDarkScheme.matches ? 'dark' : 'light');
+    
+    if (currentTheme === 'dark') {
+      document.body.classList.add('dark-mode');
+      darkModeToggle.textContent = '☀️';
+      darkModeToggle.title = 'Switch to Light Mode';
+    }
+
+    // Toggle dark mode
+    darkModeToggle.addEventListener('click', function() {
+      document.body.classList.toggle('dark-mode');
+      
+      if (document.body.classList.contains('dark-mode')) {
+        localStorage.setItem('theme', 'dark');
+        darkModeToggle.textContent = '☀️';
+        darkModeToggle.title = 'Switch to Light Mode';
+      } else {
+        localStorage.setItem('theme', 'light');
+        darkModeToggle.textContent = '🌙';
+        darkModeToggle.title = 'Switch to Dark Mode';
+      }
+    });
+
+    // Rest of your existing JavaScript code remains the same
     let map;
     let polygons = [];
     let autocompleteOrigin, autocompleteDest;
@@ -359,7 +512,7 @@
             placeMarker(location, true);
             
             // Display zone information
-            document.getElementById("zone-info").innerHTML = `Zone: <span style="color:red; font-weight:bold;">${zone}</span>`;
+            document.getElementById("zone-info").innerHTML = `Zone: <span style="color:var(--zone-color); font-weight:bold;">${zone}</span>`;
             document.getElementById("result").textContent = `Address: ${results[0].formatted_address}`;
             document.getElementById("warning").style.display = "none";
             
@@ -571,7 +724,7 @@
         destZone = getZone(destLoc);
 
         // Display zone information prominently
-        const zoneInfo = `Zones: <span style="color:red; font-weight:bold;">${startZone}</span> <span style="font-weight:bold; text-decoration:underline;">to</span> <span style="color:red; font-weight:bold;">${destZone}</span>`;
+        const zoneInfo = `Zones: <span style="color:var(--zone-color); font-weight:bold;">${startZone}</span> <span style="font-weight:bold; text-decoration:underline;">to</span> <span style="color:var(--zone-color); font-weight:bold;">${destZone}</span>`;
         document.getElementById("zone-info").innerHTML = zoneInfo;
 
         // Calculate route with multiple alternatives
