@@ -697,15 +697,15 @@
       }
     });
 
-    // Zone to survey time mapping
+    // Zone to survey time mapping - Updated as per your requirements
     const zoneSurveyTimes = {
-      'Zone 1': '10:30am', // Hutt Valley
+      'Zone 1': '10:30am',  // Hutt Valley
       'Zone 2A': '11:00am', // Wellington Central
       'Zone 2B': '11:00am', // Wellington Suburbs
-      'Zone 3': '10:30am', // Hutt Valley North
-      'Zone 4': '10:30am', // Porirua
-      'Zone 5': '10:30am', // Kāpiti Coast
-      'Palmerston North': '11:00am'
+      'Zone 3': '10:30am',  // Hutt Valley North
+      'Zone 4': '10:30am',  // Porirua
+      'Zone 5': '10:30am'   // Kāpiti Coast
+      // Note: Palmerston North removed as requested
     };
 
     // Calculate survey time based on your exact rules
@@ -729,9 +729,17 @@
 
     // Recommend survey slot based on survey time and zone
     function recommendSurveySlot(surveyTimeCode, zone) {
+      // Determine second survey time based on zone
+      let secondSurveyTime = '10:30am'; // Default
+      if (zone === 'Zone 2A' || zone === 'Zone 2B') {
+        secondSurveyTime = '11:00am';
+      } else if (zone && zoneSurveyTimes[zone]) {
+        secondSurveyTime = zoneSurveyTimes[zone];
+      }
+      
       const slots = [
         { number: 1, name: 'First Survey', time: '0845am', note: 'usually video, physical if in Paraparaumu' },
-        { number: 2, name: 'Second Survey', time: zoneSurveyTimes[zone] || '10:30am', note: '' },
+        { number: 2, name: 'Second Survey', time: secondSurveyTime, note: '' },
         { number: 3, name: 'Third Survey', time: '11:45am - 12:30pm', note: 'depending on previous survey size' },
         { number: 4, name: 'Fourth Survey', time: '1pm - 2pm', note: 'depending on previous survey size' },
         { number: 5, name: 'Last Survey', time: '3pm - 4pm', note: 'depending on previous survey size' }
@@ -820,6 +828,19 @@
         scheduleDisplayElement.appendChild(slotElement);
       });
       
+      // Add zone-specific note for second survey
+      if (currentZoneForCalculator === 'Zone 2A' || currentZoneForCalculator === 'Zone 2B') {
+        const zoneNote = document.createElement('div');
+        zoneNote.style.cssText = 'font-size: 12px; color: var(--highlight-color); margin-top: 10px; font-style: italic;';
+        zoneNote.textContent = `Note: Second survey at 11:00am for ${currentZoneForCalculator}`;
+        scheduleDisplayElement.appendChild(zoneNote);
+      } else if (currentZoneForCalculator && zoneSurveyTimes[currentZoneForCalculator]) {
+        const zoneNote = document.createElement('div');
+        zoneNote.style.cssText = 'font-size: 12px; color: var(--highlight-color); margin-top: 10px; font-style: italic;';
+        zoneNote.textContent = `Note: Second survey at ${zoneSurveyTimes[currentZoneForCalculator]} for ${currentZoneForCalculator}`;
+        scheduleDisplayElement.appendChild(zoneNote);
+      }
+      
       // Update notes
       if (surveyTime.code === 'special') {
         surveyNotesElement.innerHTML = `
@@ -850,51 +871,72 @@
     bedroomsSelect.addEventListener('change', updateCalculator);
     livingAreasSelect.addEventListener('change', updateCalculator);
 
-    // Check if address is in Wellington/Palmerston North and show calculator
+    // Check if address is in Wellington zones ONLY (exclude Palmerston North)
     function checkIfShowCalculator(zoneName) {
-      const wellingtonPalmerstonZones = [
+      // Only Wellington zones - Palmerston North excluded as requested
+      const wellingtonZones = [
         'Zone 1', 'Zone 2A', 'Zone 2B', 'Zone 3', 'Zone 4', 'Zone 5',
-        'Wellington', 'Lower Hutt', 'Upper Hutt', 'Porirua', 'Kapiti',
-        'Palmerston North', 'Palmerston'
+        'Wellington', 'Lower Hutt', 'Upper Hutt', 'Porirua', 'Kapiti'
       ];
       
       const zone = zoneName || '';
       let shouldShow = false;
       let detectedZone = '';
+      let zoneDisplayName = '';
       
-      // Check if it's one of our target zones
-      wellingtonPalmerstonZones.forEach(zoneKeyword => {
-        if (zone.toLowerCase().includes(zoneKeyword.toLowerCase())) {
-          shouldShow = true;
-          // Extract the proper zone name
-          if (zone.includes('Zone 1') || zone.includes('Hutt Valley')) {
-            detectedZone = 'Zone 1';
-          } else if (zone.includes('Zone 2A') || zone.includes('Wellington Central')) {
-            detectedZone = 'Zone 2A';
-          } else if (zone.includes('Zone 2B') || zone.includes('Wellington Suburbs')) {
-            detectedZone = 'Zone 2B';
-          } else if (zone.includes('Zone 3')) {
-            detectedZone = 'Zone 3';
-          } else if (zone.includes('Zone 4') || zone.includes('Porirua')) {
-            detectedZone = 'Zone 4';
-          } else if (zone.includes('Zone 5') || zone.includes('Kapiti')) {
-            detectedZone = 'Zone 5';
-          } else if (zone.includes('Palmerston')) {
-            detectedZone = 'Palmerston North';
-          } else {
-            detectedZone = zoneKeyword;
-          }
-        }
-      });
+      // Convert zone to lowercase for case-insensitive comparison
+      const zoneLower = zone.toLowerCase();
+      
+      // EXCLUDE Palmerston North and Manawatu
+      if (zoneLower.includes('palmerston') || zoneLower.includes('manawatu')) {
+        shouldShow = false; // Explicitly exclude Palmerston North
+      }
+      // Specific checks for Wellington zones only
+      else if (zoneLower.includes('zone 1') || zoneLower.includes('hutt valley') || zoneLower.includes('lower hutt') || zoneLower.includes('upper hutt')) {
+        shouldShow = true;
+        detectedZone = 'Zone 1';
+        zoneDisplayName = 'Zone 1 (Hutt Valley)';
+      } 
+      else if (zoneLower.includes('zone 2a') || zoneLower.includes('wellington central')) {
+        shouldShow = true;
+        detectedZone = 'Zone 2A';
+        zoneDisplayName = 'Zone 2A (Wellington Central)';
+      }
+      else if (zoneLower.includes('zone 2b') || zoneLower.includes('wellington suburbs')) {
+        shouldShow = true;
+        detectedZone = 'Zone 2B';
+        zoneDisplayName = 'Zone 2B (Wellington Suburbs)';
+      }
+      else if (zoneLower.includes('zone 3')) {
+        shouldShow = true;
+        detectedZone = 'Zone 3';
+        zoneDisplayName = 'Zone 3 (Hutt Valley North)';
+      }
+      else if (zoneLower.includes('zone 4') || zoneLower.includes('porirua')) {
+        shouldShow = true;
+        detectedZone = 'Zone 4';
+        zoneDisplayName = 'Zone 4 (Porirua)';
+      }
+      else if (zoneLower.includes('zone 5') || zoneLower.includes('kapiti') || zoneLower.includes('paraparaumu')) {
+        shouldShow = true;
+        detectedZone = 'Zone 5';
+        zoneDisplayName = 'Zone 5 (Kāpiti Coast)';
+      }
+      else if (zoneLower.includes('wellington') && !zoneLower.includes('auckland')) {
+        // Catch-all for other Wellington zones but exclude Auckland Wellington (if exists)
+        shouldShow = true;
+        detectedZone = 'Wellington';
+        zoneDisplayName = 'Wellington Region';
+      }
       
       if (shouldShow) {
         currentZoneForCalculator = detectedZone;
-        currentZoneName = zone;
+        currentZoneName = zoneDisplayName || zone;
         calculatorTrigger.classList.add('show');
         calculatorTrigger.classList.add('recommended');
         calculatorTrigger.title = 'Survey Calculator (Recommended for this area)';
         
-        // Auto-open calculator if it's a Wellington/Palmerston North zone
+        // Auto-open calculator if it's a Wellington zone
         surveyCalculator.classList.add('show');
         updateCalculator();
         
