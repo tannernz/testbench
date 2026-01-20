@@ -699,13 +699,12 @@
 
     // Zone to survey time mapping - Updated as per your requirements
     const zoneSurveyTimes = {
-      'Zone 1': '10:30am',  // Hutt Valley
-      'Zone 2A': '11:00am', // Wellington Central
-      'Zone 2B': '11:00am', // Wellington Suburbs
-      'Zone 3': '10:30am',  // Hutt Valley North
-      'Zone 4': '10:30am',  // Porirua
-      'Zone 5': '10:30am'   // Kāpiti Coast
-      // Note: Palmerston North removed as requested
+      'Zone 1': '10:30am',  // Wellington - Hutt Valley
+      'Zone 2A': '11:00am', // Wellington - Wellington Central
+      'Zone 2B': '11:00am', // Wellington - Wellington Suburbs
+      'Zone 3': '10:30am',  // Wellington - Hutt Valley North
+      'Zone 4': '10:30am',  // Wellington - Porirua
+      'Zone 5': '10:30am'   // Wellington - Kāpiti Coast
     };
 
     // Calculate survey time based on your exact rules
@@ -873,12 +872,6 @@
 
     // Check if address is in Wellington zones ONLY (exclude Palmerston North)
     function checkIfShowCalculator(zoneName) {
-      // Only Wellington zones - Palmerston North excluded as requested
-      const wellingtonZones = [
-        'Zone 1', 'Zone 2A', 'Zone 2B', 'Zone 3', 'Zone 4', 'Zone 5',
-        'Wellington', 'Lower Hutt', 'Upper Hutt', 'Porirua', 'Kapiti'
-      ];
-      
       const zone = zoneName || '';
       let shouldShow = false;
       let detectedZone = '';
@@ -887,46 +880,39 @@
       // Convert zone to lowercase for case-insensitive comparison
       const zoneLower = zone.toLowerCase();
       
-      // EXCLUDE Palmerston North and Manawatu
-      if (zoneLower.includes('palmerston') || zoneLower.includes('manawatu')) {
-        shouldShow = false; // Explicitly exclude Palmerston North
-      }
-      // Specific checks for Wellington zones only
-      else if (zoneLower.includes('zone 1') || zoneLower.includes('hutt valley') || zoneLower.includes('lower hutt') || zoneLower.includes('upper hutt')) {
-        shouldShow = true;
-        detectedZone = 'Zone 1';
-        zoneDisplayName = 'Zone 1 (Hutt Valley)';
-      } 
-      else if (zoneLower.includes('zone 2a') || zoneLower.includes('wellington central')) {
-        shouldShow = true;
-        detectedZone = 'Zone 2A';
-        zoneDisplayName = 'Zone 2A (Wellington Central)';
-      }
-      else if (zoneLower.includes('zone 2b') || zoneLower.includes('wellington suburbs')) {
-        shouldShow = true;
-        detectedZone = 'Zone 2B';
-        zoneDisplayName = 'Zone 2B (Wellington Suburbs)';
-      }
-      else if (zoneLower.includes('zone 3')) {
-        shouldShow = true;
-        detectedZone = 'Zone 3';
-        zoneDisplayName = 'Zone 3 (Hutt Valley North)';
-      }
-      else if (zoneLower.includes('zone 4') || zoneLower.includes('porirua')) {
-        shouldShow = true;
-        detectedZone = 'Zone 4';
-        zoneDisplayName = 'Zone 4 (Porirua)';
-      }
-      else if (zoneLower.includes('zone 5') || zoneLower.includes('kapiti') || zoneLower.includes('paraparaumu')) {
-        shouldShow = true;
-        detectedZone = 'Zone 5';
-        zoneDisplayName = 'Zone 5 (Kāpiti Coast)';
-      }
-      else if (zoneLower.includes('wellington') && !zoneLower.includes('auckland')) {
-        // Catch-all for other Wellington zones but exclude Auckland Wellington (if exists)
-        shouldShow = true;
-        detectedZone = 'Wellington';
-        zoneDisplayName = 'Wellington Region';
+      // Check for WELLINGTON zones with city specification
+      if (zoneLower.includes('wellington') && !zoneLower.includes('auckland')) {
+        // This is a Wellington zone - extract the zone code
+        if (zoneLower.includes('zone 1') && zoneLower.includes('wellington')) {
+          shouldShow = true;
+          detectedZone = 'Zone 1';
+          zoneDisplayName = 'Zone 1 (Wellington)';
+        } 
+        else if (zoneLower.includes('zone 2a') && zoneLower.includes('wellington')) {
+          shouldShow = true;
+          detectedZone = 'Zone 2A';
+          zoneDisplayName = 'Zone 2A (Wellington)';
+        }
+        else if (zoneLower.includes('zone 2b') && zoneLower.includes('wellington')) {
+          shouldShow = true;
+          detectedZone = 'Zone 2B';
+          zoneDisplayName = 'Zone 2B (Wellington)';
+        }
+        else if (zoneLower.includes('zone 3') && zoneLower.includes('wellington')) {
+          shouldShow = true;
+          detectedZone = 'Zone 3';
+          zoneDisplayName = 'Zone 3 (Wellington)';
+        }
+        else if (zoneLower.includes('zone 4') && zoneLower.includes('wellington')) {
+          shouldShow = true;
+          detectedZone = 'Zone 4';
+          zoneDisplayName = 'Zone 4 (Wellington)';
+        }
+        else if (zoneLower.includes('zone 5') && zoneLower.includes('wellington')) {
+          shouldShow = true;
+          detectedZone = 'Zone 5';
+          zoneDisplayName = 'Zone 5 (Wellington)';
+        }
       }
       
       if (shouldShow) {
