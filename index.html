@@ -4,9 +4,10 @@
   <meta charset="utf-8">
   <title>NZ Zone Lookup + Directions</title>
   
-  <!-- Leaflet & Supabase CDN Libraries -->
-  <link rel="stylesheet" href="https://unpkg.com" />
-  <script src="https://unpkg.com"></script>
+  <!-- 1. Google Maps Engine API Integration -->
+  <script src="https://googleapis.com" async defer></script>
+  
+  <!-- 2. Supabase Live Sync Database Library -->
   <script src="https://unpkg.com"></script>
 
   <style>
@@ -60,7 +61,7 @@
       padding: 0;
       min-height: 100vh;
       display: flex;
-      flex-direction: row; /* Split screen layout for sidebar alignment */
+      flex-direction: row;
     }
 
     #main-container {
@@ -149,7 +150,6 @@
       display: none;
     }
 
-    /* Appointment Shared Sidebar Panel CSS */
     #scheduling-sidebar {
       width: 380px;
       background-color: var(--sidebar-bg);
@@ -250,10 +250,8 @@
 </head>
 <body>
 
-  <!-- Access Control Theme Trigger -->
   <button id="dark-mode-toggle" onclick="toggleDarkMode()">🌓</button>
 
-  <!-- Left Main Display Container -->
   <div id="main-container">
     <div id="map"></div>
     
@@ -267,7 +265,6 @@
     </div>
   </div>
 
-  <!-- Right Shared Live Tracking Sidebar -->
   <div id="scheduling-sidebar">
     <h3>📊 Slot Availability</h3>
     <div class="sidebar-section">
@@ -313,40 +310,39 @@
       <button type="submit" class="submit-btn">Update Shared Map</button>
     </form>
   </div>
-
   <script>
     // ==========================================
     // 1. DATABASE CONFIGURATION CONNECTIONS
     // ==========================================
-    const SUPABASE_URL = "https://evwittcfxrlfvfkfrais.supabase.co"; // Paste your actual project URL here
+    const SUPABASE_URL = "https://evwittcfxrlfvfkfrais.supabase.co"; // Paste your project URL here
     const SUPABASE_ANON_KEY = "sb_publishable_7J2sB1P5hMni5aVSk0wFpQ_3_4EYsHf";
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const VIDEO_WEEKLY_CAP = 20; // Company-wide total standard video cap pool
+    const VIDEO_WEEKLY_CAP = 20; 
     let activeMapPins = [];
+    let map;
 
-    // Initialize Map Workspace Canvas
-let map;
-function initMap() {
-    map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: -36.8485, lng: 174.7633 }, // Centers over Auckland
-        zoom: 11,
-        styles: [] // You can add custom styling arrays here later if desired
-    });
-    // Kick off your dashboard sync once the map engine wakes up
-    synchSharedDashboard();
-}
-
+    // 2. Google Maps Native Initialization Engine
+    function initMap() {
+        map = new google.maps.Map(document.getElementById("map"), {
+            center: { lat: -36.8485, lng: 174.7633 }, // Initial focus over Auckland
+            zoom: 11,
+            disableDefaultUI: false
+        });
+        
+        // Launch live data listener streaming channels
+        synchSharedDashboard();
+    }
 
     // ==========================================
-    // 2. DYNAMIC REAL-TIME SLOTS ENGINE 
+    // 3. DYNAMIC REAL-TIME SLOTS ENGINE 
     // ==========================================
     async function synchSharedDashboard() {
-        // Clear old display layer elements safely
-        activeMapPins.forEach(pin => map.removeLayer(pin));
+        // Safely wipe old marker graphics arrays off map canvas
+        activeMapPins.forEach(pin => pin.setMap(null));
         activeMapPins = [];
 
-        // Query server rows without PII variables
+        // Query database array rows
         const { data: appointments, error } = await _supabase.from('active_appointments').select('*');
         if (error) return console.error(error);
 
@@ -354,31 +350,31 @@ function initMap() {
         let staffPhysicalTally = {};
 
         appointments.forEach(item => {
-            // Differentiate Map Marker Pins by Survey Type
-            const pinColor = item.survey_type === 'Physical' ? '#dc3545' : '#0d6efd';
+            if(item.lat && item.lng) {
+                // Pin markers based on survey parameters
+                const pinIcon = item.survey_type === 'Physical' 
+                    ? "http://google.com" 
+                    : "http://google.com";
 
-// Replace the old activeMapPins.push(L.circleMarker...) block with this:
-if(item.lat && item.lng) {
-    const pinColor = item.survey_type === 'Physical' ? '#dc3545' : '#0d6efd';
-    
-    const marker = new google.maps.Marker({
-        position: { lat: item.lat, lng: item.lng },
-        map: map,
-        title: `${item.survey_type} Survey`
-    });
+                const marker = new google.maps.Marker({
+                    position: { lat: item.lat, lng: item.lng },
+                    map: map,
+                    icon: pinIcon,
+                    title: `${item.survey_type} Survey`
+                });
 
-    const infoWindow = new google.maps.InfoWindow({
-        content: `<b>${item.survey_type} Survey</b><br>Time: ${item.time_slot}<br>Rep: ${item.consultant_name}`
-    });
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `<b>${item.survey_type} Survey</b><br>Time: ${item.time_slot}<br>Rep: ${item.consultant_name}`
+                });
 
-    marker.addListener("click", () => {
-        infoWindow.open(map, marker);
-    });
-    
-    activeMapPins.push(marker);
-}
+                marker.addListener("click", () => {
+                    infoWindow.open(map, marker);
+                });
 
-            // Perform analytical counts if entry matches current calendar week space
+                activeMapPins.push(marker);
+            }
+
+            // Metric tracking window processing loops
             if (isTargetInActiveWeek(item.appointment_date)) {
                 if (item.survey_type === 'Video') {
                     activeVideoTally++;
@@ -388,7 +384,7 @@ if(item.lat && item.lng) {
             }
         });
 
-        // Repopulate Sidebar Interface Statistics Blocks
+        // Sync visual data tracking statistics displays
         const dynamicVideoPool = VIDEO_WEEKLY_CAP - activeVideoTally;
         document.getElementById('video-slots-left').innerText = `${dynamicVideoPool} Video Slots Available This Week`;
 
@@ -405,7 +401,7 @@ if(item.lat && item.lng) {
         });
     }
 
-    // Submit handler converting addresses into localized coordinate vectors
+    // Submit workflow mapping addresses into standard Google vector coordinates
     document.getElementById('appointmentForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const rawAddress = document.getElementById('appAddress').value;
@@ -417,11 +413,10 @@ if(item.lat && item.lng) {
             let lat = null, lng = null;
 
             if(data && data.length > 0) {
-                lat = parseFloat(data.lat);
-                lng = parseFloat(data.lon);
+                lat = parseFloat(data[0].lat);
+                lng = parseFloat(data[0].lon);
             }
 
-            // Post clean data array directly into cloud storage engine
             await _supabase.from('active_appointments').insert([{
                 street_address: rawAddress,
                 survey_type: document.getElementById('appType').value,
@@ -440,7 +435,6 @@ if(item.lat && item.lng) {
         }
     });
 
-    // Helper evaluating current weekly transaction windows
     function isTargetInActiveWeek(dateValue) {
         const checkDate = new Date(dateValue);
         const baseline = new Date();
@@ -449,24 +443,19 @@ if(item.lat && item.lng) {
         return checkDate >= openingBound && checkDate <= closingBound;
     }
 
-    // Connect standard streaming sockets to reflect data changes globally instantly
+    // Socket stream channel sync tracking mutations
     _supabase.channel('any-change').on('postgres_changes', { event: '*', schema: 'public', table: 'active_appointments' }, () => {
         synchSharedDashboard();
     }).subscribe();
 
-    // Default legacy address placeholder function to catch form execution calls
     function lookupAddress() {
         const query = document.getElementById('address').value;
         document.getElementById('result').innerText = "Locating target address zone parameters...";
     }
 
-    // Dark Mode Theme Controller Toggle
     function toggleDarkMode() {
         document.body.classList.toggle('dark-mode');
     }
-
-    // Run synchronization routine on dashboard boot
-    synchSharedDashboard();
   </script>
 </body>
 </html>
