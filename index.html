@@ -357,18 +357,26 @@ function initMap() {
             // Differentiate Map Marker Pins by Survey Type
             const pinColor = item.survey_type === 'Physical' ? '#dc3545' : '#0d6efd';
 
-            if(item.lat && item.lng) {
-                const pin = L.circleMarker([item.lat, item.lng], {
-                    radius: 9,
-                    fillColor: pinColor,
-                    color: '#ffffff',
-                    weight: 2,
-                    fillOpacity: 0.85
-                }).bindPopup(`<b>${item.survey_type} Survey</b><br>Time: ${item.time_slot}<br>Rep: ${item.consultant_name}`)
-                .addTo(map);
+// Replace the old activeMapPins.push(L.circleMarker...) block with this:
+if(item.lat && item.lng) {
+    const pinColor = item.survey_type === 'Physical' ? '#dc3545' : '#0d6efd';
+    
+    const marker = new google.maps.Marker({
+        position: { lat: item.lat, lng: item.lng },
+        map: map,
+        title: `${item.survey_type} Survey`
+    });
 
-                activeMapPins.push(pin);
-            }
+    const infoWindow = new google.maps.InfoWindow({
+        content: `<b>${item.survey_type} Survey</b><br>Time: ${item.time_slot}<br>Rep: ${item.consultant_name}`
+    });
+
+    marker.addListener("click", () => {
+        infoWindow.open(map, marker);
+    });
+    
+    activeMapPins.push(marker);
+}
 
             // Perform analytical counts if entry matches current calendar week space
             if (isTargetInActiveWeek(item.appointment_date)) {
