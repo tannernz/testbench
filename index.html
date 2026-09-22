@@ -326,8 +326,17 @@
     let activeMapPins = [];
 
     // Initialize Map Workspace Canvas
-    const map = L.map('map').setView([-36.8485, 174.7633], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+let map;
+function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: -36.8485, lng: 174.7633 }, // Centers over Auckland
+        zoom: 11,
+        styles: [] // You can add custom styling arrays here later if desired
+    });
+    // Kick off your dashboard sync once the map engine wakes up
+    synchSharedDashboard();
+}
+
 
     // ==========================================
     // 2. DYNAMIC REAL-TIME SLOTS ENGINE 
