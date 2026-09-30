@@ -116,7 +116,7 @@
     .input-wrapper { position:relative; display:inline-block; width:320px; max-width:90%; }
     .input-wrapper input { width:100% !important; margin:5px 0 !important; }
 
-    /* Consultant marker styling — red person icon with white halo for visibility */
+    /* Consultant marker — RED person icon with halo for visibility */
     .consultant-marker {
       background: transparent;
       border: none;
@@ -131,8 +131,6 @@
          0    0   3px #fff;
       text-align: center;
     }
-
-    /* Dark-mode person icon halo uses dark outline instead so it stays visible */
     .dark-mode .consultant-marker .consultant-icon {
       text-shadow:
         -1px -1px 0 #000, 1px -1px 0 #000,
@@ -328,42 +326,25 @@
         }).addTo(map).bindPopup(c.title);
       });
 
-      loadZones();
-    }
-
-    // ============ ZONES ============
-    // NOTE: You need to inline your zones.geojson data here as ZONES_GEOJSON
-    // because you cannot run a local server. Replace the empty object below
-    // with your actual GeoJSON content, e.g.:
-    //
-    //   const ZONES_GEOJSON = {
-    //     "type": "FeatureCollection",
-    //     "features": [ { "type": "Feature", "properties": { "name": "Zone 1" }, "geometry": {...} }, ... ]
-    //   };
-    //
-    // If you'd rather keep it in a separate file, save your GeoJSON as
-    // `zones.js` with the line `window.ZONES_GEOJSON = {...};` and load it
-    // with <script src="zones.js"></script> above this script.
-    const ZONES_GEOJSON = window.ZONES_GEOJSON || { type: "FeatureCollection", features: [] };
-
-    function loadZones() {
-      if (!ZONES_GEOJSON.features || ZONES_GEOJSON.features.length === 0) {
-        console.warn("No zone data loaded. Set ZONES_GEOJSON with your actual GeoJSON content.");
-        return;
-      }
-      ZONES_GEOJSON.features.forEach(feature => {
-        const name = feature.properties.name || "Unnamed";
-        const layer = L.geoJSON(feature, {
-          style: {
-            color: "#FF6666",
-            weight: 2,
-            opacity: 0.6,
-            fillColor: "#FF6666",
-            fillOpacity: 0.05
-          }
-        }).addTo(map);
-        polygons.push({ layer, name, geojson: feature });
-      });
+      // Load zones from zones.geojson
+      fetch("zones.geojson", { cache: "no-cache" })
+        .then(res => res.json())
+        .then(data => {
+          data.features.forEach(feature => {
+            const name = feature.properties.name || "Unnamed";
+            const layer = L.geoJSON(feature, {
+              style: {
+                color: "#FF6666",
+                weight: 2,
+                opacity: 0.6,
+                fillColor: "#FF6666",
+                fillOpacity: 0.05
+              }
+            }).addTo(map);
+            polygons.push({ layer, name, geojson: feature });
+          });
+        })
+        .catch(err => console.error("Error loading GeoJSON:", err));
     }
 
     // ============ GEOCODING (Nominatim) ============
