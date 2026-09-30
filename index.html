@@ -116,6 +116,30 @@
     .input-wrapper { position:relative; display:inline-block; width:320px; max-width:90%; }
     .input-wrapper input { width:100% !important; margin:5px 0 !important; }
 
+    /* Consultant marker styling — red person icon with white halo for visibility */
+    .consultant-marker {
+      background: transparent;
+      border: none;
+    }
+    .consultant-marker .consultant-icon {
+      font-size: 22px;
+      line-height: 22px;
+      color: #e10600;
+      text-shadow:
+        -1px -1px 0 #fff, 1px -1px 0 #fff,
+        -1px  1px 0 #fff, 1px  1px 0 #fff,
+         0    0   3px #fff;
+      text-align: center;
+    }
+
+    /* Dark-mode person icon halo uses dark outline instead so it stays visible */
+    .dark-mode .consultant-marker .consultant-icon {
+      text-shadow:
+        -1px -1px 0 #000, 1px -1px 0 #000,
+        -1px  1px 0 #000, 1px  1px 0 #000,
+         0    0   3px #000;
+    }
+
     /* Leaflet dark-mode filter (invert tiles) */
     .dark-mode .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); }
     .dark-mode .leaflet-container { background:#1a1a1a; }
@@ -235,12 +259,12 @@
 
     // ============ GLOBAL STATE ============
     let map;
-    let polygons = [];              // { layer, name, geojson }
-    let currentMarkers = [];        // Leaflet markers for start/end
-    let routeLayers = [];           // polylines for routes
-    let currentRoutes = [];         // array of { coords, distance, duration }
+    let polygons = [];
+    let currentMarkers = [];
+    let routeLayers = [];
+    let currentRoutes = [];
     let selectedRouteIndex = 0;
-    let startLocation = null;       // { lat, lng }
+    let startLocation = null;
     let destLocation = null;
     let startZone = null;
     let destZone = null;
@@ -259,13 +283,14 @@
       { lat: -45.8742, lng: 170.5036, title: "32 McNab Street, Dunedin" }
     ];
 
+    // Updated consultant list — Long Bay replaced by Snells Beach, etc.
     const consultantLocations = [
       { lat: -36.7193, lng: 174.7367, title: "Consultant - Browns Bay" },
-      { lat: -36.6850, lng: 174.7410, title: "Consultant - Long Bay" },
-      { lat: -37.6500, lng: 175.5167, title: "Consultant - Morrinsville" },
+      { lat: -36.4230, lng: 174.7400, title: "Consultant - Snells Beach" },
+      { lat: -37.7870, lng: 175.2900, title: "Consultant - Hamilton East" },
       { lat: -37.6973, lng: 176.2846, title: "Consultant - Papamoa Beach" },
       { lat: -40.9167, lng: 175.0167, title: "Consultant - Paraparaumu" },
-      { lat: -43.5833, lng: 172.3833, title: "Consultant - Rolleston" }
+      { lat: -43.5280, lng: 172.5730, title: "Consultant - Ilam" }
     ];
 
     // ============ MAP INIT ============
@@ -277,7 +302,6 @@
         attribution: '© OpenStreetMap contributors'
       }).addTo(map);
 
-      // Add scale bar
       L.control.scale({ imperial: false }).addTo(map);
 
       // Branch markers (red building emoji)
@@ -292,45 +316,57 @@
         }).addTo(map).bindPopup(b.title);
       });
 
-      // Consultant markers (person emoji)
+      // Consultant markers — RED person icon
       consultantLocations.forEach(c => {
         L.marker([c.lat, c.lng], {
           icon: L.divIcon({
             className: 'consultant-marker',
-            html: '<div style="font-size:20px;line-height:20px;">👤</div>',
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
+            html: '<div class="consultant-icon">👤</div>',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11]
           })
         }).addTo(map).bindPopup(c.title);
       });
 
-      // Load zones
       loadZones();
     }
 
+    // ============ ZONES ============
+    // NOTE: You need to inline your zones.geojson data here as ZONES_GEOJSON
+    // because you cannot run a local server. Replace the empty object below
+    // with your actual GeoJSON content, e.g.:
+    //
+    //   const ZONES_GEOJSON = {
+    //     "type": "FeatureCollection",
+    //     "features": [ { "type": "Feature", "properties": { "name": "Zone 1" }, "geometry": {...} }, ... ]
+    //   };
+    //
+    // If you'd rather keep it in a separate file, save your GeoJSON as
+    // `zones.js` with the line `window.ZONES_GEOJSON = {...};` and load it
+    // with <script src="zones.js"></script> above this script.
+    const ZONES_GEOJSON = window.ZONES_GEOJSON || { type: "FeatureCollection", features: [] };
+
     function loadZones() {
-      fetch("zones.geojson", { cache: "no-cache" })
-        .then(res => res.json())
-        .then(data => {
-          data.features.forEach(feature => {
-            const name = feature.properties.name || "Unnamed";
-            const layer = L.geoJSON(feature, {
-              style: {
-                color: "#FF6666",
-                weight: 2,
-                opacity: 0.6,
-                fillColor: "#FF6666",
-                fillOpacity: 0.05
-              }
-            }).addTo(map);
-            polygons.push({ layer, name, geojson: feature });
-          });
-        })
-        .catch(err => console.error("Error loading zones.geojson:", err));
+      if (!ZONES_GEOJSON.features || ZONES_GEOJSON.features.length === 0) {
+        console.warn("No zone data loaded. Set ZONES_GEOJSON with your actual GeoJSON content.");
+        return;
+      }
+      ZONES_GEOJSON.features.forEach(feature => {
+        const name = feature.properties.name || "Unnamed";
+        const layer = L.geoJSON(feature, {
+          style: {
+            color: "#FF6666",
+            weight: 2,
+            opacity: 0.6,
+            fillColor: "#FF6666",
+            fillOpacity: 0.05
+          }
+        }).addTo(map);
+        polygons.push({ layer, name, geojson: feature });
+      });
     }
 
     // ============ GEOCODING (Nominatim) ============
-    // Nominatim usage policy: max 1 req/sec, provide a valid identifier.
     let lastGeocodeTime = 0;
     async function geocodeAddress(query) {
       const now = Date.now();
@@ -339,9 +375,7 @@
       lastGeocodeTime = Date.now();
 
       const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=nz&limit=1&q=${encodeURIComponent(query)}`;
-      const res = await fetch(url, {
-        headers: { 'Accept': 'application/json' }
-      });
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
       const data = await res.json();
       if (!data || data.length === 0) return null;
       return {
@@ -351,7 +385,7 @@
       };
     }
 
-    // ============ AUTOCOMPLETE (Nominatim) ============
+    // ============ AUTOCOMPLETE ============
     function setupAutocomplete(inputId, dropdownId) {
       const input = document.getElementById(inputId);
       const dropdown = document.getElementById(dropdownId);
@@ -364,7 +398,6 @@
         if (q.length < 3) { dropdown.style.display = 'none'; return; }
 
         timer = setTimeout(async () => {
-          // Rate limit: 1 req/sec to Nominatim
           const now = Date.now();
           const wait = Math.max(0, 1100 - (now - lastQueryTime));
           if (wait > 0) await new Promise(r => setTimeout(r, wait));
@@ -394,7 +427,6 @@
         }, 350);
       });
 
-      // Hide on blur (delayed so click registers)
       input.addEventListener('blur', () => {
         setTimeout(() => { dropdown.style.display = 'none'; }, 200);
       });
@@ -409,7 +441,6 @@
     }
 
     // ============ ROUTING (OSRM) ============
-    // OSRM public demo server. For production, host your own.
     async function getRoutes(start, end) {
       const url = `https://router.project-osrm.org/route/v1/driving/` +
                   `${start.lng},${start.lat};${end.lng},${end.lat}` +
@@ -418,17 +449,16 @@
       const data = await res.json();
       if (!data.routes || data.routes.length === 0) return [];
       return data.routes.map(r => ({
-        coords: r.geometry.coordinates.map(c => [c[1], c[0]]), // [lat,lng]
-        distance: r.distance, // meters
-        duration: r.duration  // seconds
+        coords: r.geometry.coordinates.map(c => [c[1], c[0]]),
+        distance: r.distance,
+        duration: r.duration
       }));
     }
 
-    // Distance from A to B (road) — single route
     async function getRoadDistance(start, end) {
       const routes = await getRoutes(start, end);
       if (routes.length === 0) return Infinity;
-      return routes[0].distance; // meters
+      return routes[0].distance;
     }
 
     // ============ ZONE LOOKUP ============
@@ -463,7 +493,7 @@
       currentMarkers.push(marker);
     }
 
-    // ============ SEARCH HANDLERS ============
+    // ============ SEARCH ============
     async function handleSearch() {
       const address1 = document.getElementById("address").value.trim();
       const address2 = document.getElementById("to").value.trim();
@@ -545,7 +575,6 @@
       displayRoute(0);
       displayRouteAlternatives(routes);
 
-      // Only check local warning if both are 'local'
       checkLocalWarning();
     }
 
@@ -559,7 +588,6 @@
 
     function displayRoute(index) {
       if (!currentRoutes[index]) return;
-      // Remove previous polylines
       routeLayers.forEach(l => map.removeLayer(l));
       routeLayers = [];
 
@@ -622,23 +650,20 @@
     }
 
     async function checkLocationLocal(location) {
-      // Find nearest branch by straight-line first
       let closest = null;
       let minKm = Infinity;
       for (const b of branchLocations) {
         const km = straightLineKm(location, { lat: b.lat, lng: b.lng });
         if (km < minKm) { minKm = km; closest = b; }
       }
-      // If it's over 50 km straight-line, definitely not local. Skip OSRM call.
       if (minKm >= 50) return false;
       if (!closest) return false;
 
       try {
         const meters = await getRoadDistance(location, { lat: closest.lat, lng: closest.lng });
-        return meters <= 35000; // 35 km
+        return meters <= 35000;
       } catch (e) {
         console.error("Road distance check failed:", e);
-        // Fallback to straight-line distance
         return minKm <= 35;
       }
     }
@@ -691,7 +716,7 @@
       map.setView([-40.9, 174.9], 5);
     }
 
-    // ============ SURVEY CALCULATOR (unchanged logic) ============
+    // ============ SURVEY CALCULATOR ============
     const calculatorTrigger = document.getElementById('calculator-trigger');
     const surveyCalculator = document.getElementById('survey-calculator');
     const closeCalculator = document.querySelector('.close-calculator');
